@@ -1,4 +1,4 @@
-# Project Name
+# Adjuface
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/Dimildizio/Adjuface?style=social)](https://github.com/Dimildizio/Adjuface/stargazers)
