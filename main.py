@@ -22,4 +22,3 @@ if __name__ == '__main__':
     ibot = Bot(token=get_token())
     dispatcher = Dispatcher()
     asyncio.run(main(dispatcher, ibot))
-

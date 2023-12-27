@@ -1,7 +1,9 @@
 from aiogram import F
 from aiogram.filters.command import Command
+from aiogram.types import FSInputFile
 # from bot.user_logger import log_user
-# from segmentation.get_image import process_image
+import os
+from face_extraction.extract_face import get_face
 
 
 async def handle_start(message):
@@ -18,9 +20,22 @@ async def handle_help(message):
     await message.answer(help_message)
 
 
-async def handle_image(message, bot):
-    pass
-    # Image processing logic here (simplified for brevity)
+async def handle_image(message):
+    try:
+        print(os.getcwd())
+        temp_dir = "temp"
+        os.makedirs(temp_dir, exist_ok=True)
+
+        temp_file = f"{temp_dir}/{message.photo[-1].file_id}.jpg"
+        new_file = f"{temp_dir}/{message.photo[-1].file_id}_modified.jpg"
+
+        await message.bot.download(message.photo[-1], destination=temp_file)
+        await get_face(temp_file, new_file)
+
+        await message.answer_photo(FSInputFile(new_file), caption="Here is your processed image")
+    except Exception as e:
+        print(e)    # TODO: log it
+        message.answer('Sorry must have been an error. Try again later.')
 
 
 def setup_handlers(dp):
