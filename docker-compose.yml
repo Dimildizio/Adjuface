@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  bot:
+    build: ./bot
+    volumes:
+      - ./bot:/usr/src/app
+    depends_on:
+      - face_extraction
+
+
+  face_extraction:
+    build: ./face_extraction
+    volumes:
+      - ./face_extraction:/usr/src/app
