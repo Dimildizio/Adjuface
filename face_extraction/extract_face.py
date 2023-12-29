@@ -1,6 +1,45 @@
 import cv2
 import numpy as np
 from PIL import Image
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, UploadFile, File
+from tempfile import NamedTemporaryFile
+import os
+
+
+file_db = {}  # TODO: change for real db
+app = FastAPI()
+app.add_middleware(CORSMiddleware,
+                   allow_origins=["*"],  # Allows all origins
+                   allow_credentials=True,
+                   allow_methods=["*"],  # Allows all methods
+                   allow_headers=["*"],)  # Allows all headers
+
+
+@app.get("/images/{file_id}")  # for tests
+async def get_image(file_id: str):
+    file_path = file_db.get(file_id)
+    if file_path:
+        return FileResponse(file_path)
+    return {"error": "File not found"}
+
+
+@app.post('/extract_face')
+async def extract_face(file: UploadFile = File(...)):
+    with NamedTemporaryFile(delete=False, suffix='.jpg') as tempfile:
+        contents = await file.read()
+        tempfile.write(contents)
+
+    filename = tempfile.name
+    new_filename = filename.replace('.jpg', '_modified.jpg')
+
+    await get_face(filename, new_filename)
+
+    file_id = os.path.basename(new_filename)
+    file_db[file_id] = new_filename
+    print(file_db)
+    return {'file_id': file_id}
 
 
 async def get_face(temp_file, new_file):
@@ -18,4 +57,5 @@ async def get_face(temp_file, new_file):
         cv2.putText(img_cv, 'face', (x, y - 10), font, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
     image = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
     image.save(new_file)
+    print('new file saved')
     return image

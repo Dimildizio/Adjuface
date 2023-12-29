@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0; /* Remove default margin */
+            display: flex; /* Use flexbox */
+            flex-direction: column; /* Stack elements vertically */
+            align-items: center; /* Center content horizontally */
+            height: 100vh; /* Set body height to fill the screen */
+        }
+        #uploadForm {
+            margin-top: 20px; /* Add some space at the top */
+        }
+        #processedImage {
+            display: none; /* Hide the image initially */
+            max-width: 100%; /* Limit the image width to not exceed the screen width */
+            max-height: calc(100vh - 60px); /* Limit the image height to not exceed the screen height minus form height */
+            object-fit: contain; /* Ensure the aspect ratio is maintained */
+            margin-top: 20px; /* Add some space between the form and the image */
+        }
+    </style>
+</head>
+<body>
+
+<div id="uploadForm">
+    <h2>Upload Image</h2>
+    <form enctype="multipart/form-data">
+        <div>
+            Select image to upload:
+            <input type="file" name="file" id="file">
+        </div>
+        <div>
+            <input type="button" value="Process Image" onclick="uploadImage()">
+        </div>
+    </form>
+</div>
+
+<!-- Placeholder for the processed image -->
+<img id="processedImage"/>
+
+<script>
+// JavaScript function to handle the image upload
+function uploadImage() {
+  var formData = new FormData(document.querySelector('form'));
+  fetch('http://localhost:8000/extract_face', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.file_id) {
+      var processedImage = document.getElementById('processedImage');
+      processedImage.src = `http://localhost:8000/images/${data.file_id}`;
+      processedImage.style.display = 'block'; // Make the image visible
+    }
+  })
+  .catch(error => console.error('Error:', error));
+}
+</script>
+
+</body>
+</html>

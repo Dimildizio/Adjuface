@@ -1,7 +1,9 @@
+aiogram>=3.0
 fastapi
 numpy >= 1.2
 opencv-python-headless
 pillow >= 9.0
 python-multipart
+pyyaml
+torch
 uvicorn
-
