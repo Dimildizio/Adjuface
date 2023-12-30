@@ -1,1 +1,4 @@
 aiogram>=3.0
+fastapi
+httpx
+uvicorn
