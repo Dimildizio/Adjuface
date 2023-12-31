@@ -6,7 +6,7 @@ from bot.message_handler import setup_handlers
 
 
 async def main(dp, iobot):
-    setup_handlers(dp)
+    setup_handlers(dp, get_token())
     await dp.start_polling(iobot)
 
 
