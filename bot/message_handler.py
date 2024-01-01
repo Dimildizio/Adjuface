@@ -74,7 +74,7 @@ async def alternative_handle_image(message: Message, token):
                     image_stream = io.BytesIO(image_data)
                     #image_stream.name = 'processed_image.jpg'  # Telegram requires a filename
                     # Use the BytesIO object with InputFile
-                    await message.answer_photo(photo=InputFile(image_stream.name), caption="Here is your processed image")
+                    await message.answer_photo(photo=InputFile(image_data), caption="Here is your processed image")
                     print('Image sent')
                 else:
                     error_message = await response.text()
