@@ -1,7 +1,7 @@
 from aiogram import F
 from aiogram.filters.command import Command
-from aiogram.types import FSInputFile, Message
-import os, aiohttp, yaml
+from aiogram.types import FSInputFile, Message, InputFile
+import os, aiohttp, yaml, io
 from face_extraction.extract_face import get_face
 from fastapi import FastAPI, UploadFile, File
 # from bot.user_logger import log_user
@@ -68,19 +68,24 @@ async def alternative_handle_image(message: Message, token):
                 # {'file':('image.jpg', content, 'image/jpeg')}) as response:
                 print('Sending image through fastapi')
                 if response.status == 200:
-                    data = await response.json()
-                    print('image sent')
+                    image_data = await response.read()
+
+                    # Create a BytesIO object from the image data
+                    image_stream = io.BytesIO(image_data)
+                    #image_stream.name = 'processed_image.jpg'  # Telegram requires a filename
+                    # Use the BytesIO object with InputFile
+                    await message.answer_photo(photo=InputFile(image_stream.name), caption="Here is your processed image")
+                    print('Image sent')
                 else:
                     error_message = await response.text()
                     print(error_message)
                     await message.answer('Failed to process image. Please try again')
                     return
-        processed_file_id = data.get('file_id')
+        '''processed_file_id = data.get('file_id')
         if processed_file_id:
-            print('result sent')
-            await message.answer_photo(FSInputFile(face_processed_url+processed_file_id), caption="Here is your processed image")
+            await message.answer_photo(face_processed_url+processed_file_id, caption="Here is your processed image")
         else:
-            await message.answer("No processed image received.")
+            await message.answer("No processed image received.")'''
     except Exception as e:
         print(e)    # TODO: log it
         message.answer('Sorry must have been an error. Try again later.')

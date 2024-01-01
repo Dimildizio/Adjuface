@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
 from PIL import Image
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from tempfile import NamedTemporaryFile
-import os
+import os, io
 
 
 file_db = {}  # TODO: change for real db
@@ -35,6 +35,12 @@ async def extract_face(file: UploadFile = File(...)):
     new_filename = filename.replace('.jpg', '_modified.jpg')
 
     await get_face(filename, new_filename)
+    img = Image.open(new_filename)
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/jpeg")
+
 
     file_id = os.path.basename(new_filename)
     file_db[file_id] = new_filename
