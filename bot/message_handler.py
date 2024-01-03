@@ -1,10 +1,23 @@
+import aiohttp
+import io
+import random
+import os
+import yaml
+
 from aiogram import F
 from aiogram.filters.command import Command
-from aiogram.types import FSInputFile, Message, InputFile
-import os, aiohttp, yaml, io
+from aiogram.types import FSInputFile, Message
 from face_extraction.extract_face import get_face
-from fastapi import FastAPI, UploadFile, File
+from PIL import Image
+# from fastapi import FastAPI, UploadFile, File
 # from bot.user_logger import log_user
+
+
+def generate_filename():
+    while True:
+        filename = f'img_{random.randint(1, 999999)}.png'
+        if not os.path.exists(filename):
+            return filename
 
 
 async def handle_start(message):
@@ -46,11 +59,13 @@ async def handle_image(message):
 
 
 async def alternative_handle_image(message: Message, token):
-    face_processed_url = 'http://localhost:8000/images/'
+    #  face_processed_url = 'http://localhost:8000/images/'
     face_extraction_url = 'http://localhost:8000/extract_face'
-    file_id = message.photo[-1].file_id
-    file_path = await message.bot.get_file(file_id)
+    #  file_id = message.photo[-1].file_id
+    file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
+    output = generate_filename()
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(file_url) as response:
@@ -60,7 +75,7 @@ async def alternative_handle_image(message: Message, token):
                 else:
                     error_message = await response.text()
                     print(error_message)
-                    message.answer('Failed to download image. Please try again')
+                    await message.answer('Failed to download image. Please try again')
                     return
             dataform = aiohttp.FormData()   # TODO: find the bug
             dataform.add_field('file', content, filename='image.jpg', content_type='image/jpeg')
@@ -70,25 +85,23 @@ async def alternative_handle_image(message: Message, token):
                 if response.status == 200:
                     image_data = await response.read()
 
-                    # Create a BytesIO object from the image data
-                    image_stream = io.BytesIO(image_data)
-                    #image_stream.name = 'processed_image.jpg'  # Telegram requires a filename
-                    # Use the BytesIO object with InputFile
-                    await message.answer_photo(photo=InputFile(image_stream.name), caption="Here is your processed image")
+                    imgfile = Image.open(io.BytesIO(image_data))
+                    imgfile.save(output, format='PNG')
+
+                    inp_file = FSInputFile(output)
+                    await message.answer_photo(photo=inp_file)
+
+                    os.remove(output)
                     print('Image sent')
                 else:
                     error_message = await response.text()
                     print(error_message)
                     await message.answer('Failed to process image. Please try again')
                     return
-        '''processed_file_id = data.get('file_id')
-        if processed_file_id:
-            await message.answer_photo(face_processed_url+processed_file_id, caption="Here is your processed image")
-        else:
-            await message.answer("No processed image received.")'''
+
     except Exception as e:
         print(e)    # TODO: log it
-        message.answer('Sorry must have been an error. Try again later.')
+        await message.answer('Sorry must have been an error. Try again later.')
 
 
 def setup_handlers(dp, bot_token):
@@ -97,7 +110,6 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('help'))(handle_help)
 
     async def image_handler(message: Message):
-
         await alternative_handle_image(message, bot_token)
     dp.message(F.photo)(image_handler)
     # dp.message(F.photo)(lambda message: alternative_handle_image(message, bot_token))

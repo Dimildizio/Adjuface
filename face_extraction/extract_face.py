@@ -5,7 +5,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from tempfile import NamedTemporaryFile
-import os, io
+import os
+import io
 
 
 file_db = {}  # TODO: change for real db
@@ -35,17 +36,13 @@ async def extract_face(file: UploadFile = File(...)):
     new_filename = filename.replace('.jpg', '_modified.jpg')
 
     await get_face(filename, new_filename)
+
+    #  TODO: could just send Image file
     img = Image.open(new_filename)
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG')
     img_byte_arr = img_byte_arr.getvalue()
     return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/jpeg")
-
-
-    file_id = os.path.basename(new_filename)
-    file_db[file_id] = new_filename
-    print(file_db)
-    return {'file_id': file_id}
 
 
 async def get_face(temp_file, new_file):
