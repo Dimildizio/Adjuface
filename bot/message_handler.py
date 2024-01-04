@@ -19,7 +19,6 @@ def get_contacts():
     return config
 
 
-
 def generate_filename():
     while True:
         filename = f'img_{random.randint(1, 999999)}.png'
@@ -35,9 +34,10 @@ async def handle_support(message):
     await message.bot.send_message(get_contacts()['my_id'], f'{message.from_user.id} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
+
 async def handle_contacts(message):
     contacts = get_contacts()
-    await message.answer(f"Reach me out through\nTelegram: @{contacts['telegram']}\nGithub: {contacts['github']}\n")
+    await message.answer(f"Reach me out through:\nTelegram: @{contacts['telegram']}\nGithub: {contacts['github']}\n")
 
 
 async def handle_help(message):
@@ -45,15 +45,11 @@ async def handle_help(message):
         "This bot can only process photos. Here are the available commands:\n"
         "/start - Start the bot\n"
         "/help - Display this help message\n"
+        "/contacts - Show contacts list\n"
+        "/support - send a support request\n"
         "Send me a photo, and I'll process it!"
     )
     await message.answer(help_message)
-
-
-def get_token():
-    with open('../config.yaml', 'r') as f:
-        config = yaml.safe_load(f)
-    return config['token']
 
 
 async def handle_image(message):
