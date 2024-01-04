@@ -33,16 +33,16 @@ async def extract_face(file: UploadFile = File(...)):
         tempfile.write(contents)
 
     filename = tempfile.name
-    new_filename = filename.replace('.jpg', '_modified.jpg')
+    new_filename = filename.replace('.jpg', '_modified.png')
 
     await get_face(filename, new_filename)
 
     #  TODO: could just send Image file
     img = Image.open(new_filename)
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG')
+    img.save(img_byte_arr, format='PNG')
     img_byte_arr = img_byte_arr.getvalue()
-    return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/jpeg")
+    return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/png")
 
 
 async def get_face(temp_file, new_file):
@@ -54,11 +54,17 @@ async def get_face(temp_file, new_file):
 
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
+
+    transparent_image = Image.new("RGBA", image.size, (0, 0, 0, 0))
     for (x, y, w, h) in faces:
-        cv2.rectangle(img_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img_cv, 'face', (x, y - 10), font, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
-    image = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
-    image.save(new_file)
+        face_region = image.crop((x, y, x + w, y + h))
+        transparent_image.paste(face_region, (x, y, x + w, y + h))
+
+        #cv2.rectangle(img_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        #font = cv2.FONT_HERSHEY_SIMPLEX
+        #cv2.putText(img_cv, 'face', (x, y - 10), font, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
+    #image = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+    #image.save(new_file)
+    transparent_image.save(new_file, format="PNG")
     print('new file saved')
-    return image
+    return transparent_image
