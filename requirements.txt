@@ -8,4 +8,4 @@ pyyaml~=6.0.1
 torch
 uvicorn
 aiohttp~=3.9.1
-opencv-python~=4.7.0.72
+opencv-python

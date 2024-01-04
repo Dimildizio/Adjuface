@@ -31,7 +31,10 @@ async def handle_start(message):
 
 
 async def handle_support(message):
-    await message.bot.send_message(get_contacts()['my_id'], f'{message.from_user.id} requires help')
+    m = message.from_user
+    print(dir(m))
+    text = f'user requires help:\nids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
+    await message.bot.send_message(get_contacts()['my_id'], f'{text} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
 
@@ -47,8 +50,7 @@ async def handle_help(message):
         "/help - Display this help message\n"
         "/contacts - Show contacts list\n"
         "/support - send a support request\n"
-        "Send me a photo, and I'll process it!"
-    )
+        "Send me a photo, and I'll process it!")
     await message.answer(help_message)
 
 
@@ -89,8 +91,8 @@ async def alternative_handle_image(message: Message, token):
                     print(error_message)
                     await message.answer('Failed to download image. Please try again')
                     return
-            dataform = aiohttp.FormData()   # TODO: find the bug
-            dataform.add_field('file', content, filename='image.jpg', content_type='image/jpeg')
+            dataform = aiohttp.FormData()
+            dataform.add_field('file', content, filename='image.png', content_type='image/png')
             async with session.post(face_extraction_url, data=dataform) as response:
                 # {'file':('image.jpg', content, 'image/jpeg')}) as response:
                 print('Sending image through fastapi')
