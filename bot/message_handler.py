@@ -13,6 +13,12 @@ from PIL import Image
 # from bot.user_logger import log_user
 
 
+def get_contacts():
+    with open('bot/contacts.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    return config['telegram'], config['github']
+
+
 def generate_filename():
     while True:
         filename = f'img_{random.randint(1, 999999)}.png'
@@ -22,6 +28,11 @@ def generate_filename():
 
 async def handle_start(message):
     await message.answer("Welcome! Send me a photo, and I'll process it.")
+
+
+async def handle_contacts(message):
+    tg, git = get_contacts()
+    await message.answer(f"You can reach to me through\nTelegram: @{tg}\nGithub: {git}")
 
 
 async def handle_help(message):
@@ -108,6 +119,7 @@ def setup_handlers(dp, bot_token):
 
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
+    dp.message(Command('contacts'))(handle_contacts)
 
     async def image_handler(message: Message):
         await alternative_handle_image(message, bot_token)
