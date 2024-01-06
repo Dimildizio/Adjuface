@@ -8,7 +8,7 @@ def get_address(txt):
     return f'CelebAMask-HQ/YOLOFormat/{txt}/train'
 
 
-def resize_and_center_image(image, size=(640, 640), is_mask=False):
+def resize_and_center_image(image, size=(512, 512), is_mask=False):
     """Resize and center the image or mask in a 640x640 frame."""
     h, w = image.shape[:2]
     scale = min(size[0] / h, size[1] / w)
@@ -17,9 +17,10 @@ def resize_and_center_image(image, size=(640, 640), is_mask=False):
     resized = cv2.resize(image, (new_w, new_h))
 
     if is_mask:
-        canvas = np.zeros((size[0], size[1]), dtype=np.uint8)  # Black canvas for mask
-    else:
-        canvas = np.zeros((size[0], size[1], 3), dtype=np.uint8)  # Black canvas for image
+        return resized
+        #  canvas = np.zeros((size[0], size[1]), dtype=np.uint8)  # Black canvas for mask
+    #  else:
+    canvas = np.zeros((size[0], size[1], 3), dtype=np.uint8)  # Black canvas for image
     # Center the image or mask in the canvas
     x_offset = (size[1] - new_w) // 2
     y_offset = (size[0] - new_h) // 2
@@ -63,7 +64,7 @@ index = 0
 
 while True:
     resized_image = resize_and_center_image(images[index])
-    resized_mask = resize_and_center_image(masks[index], size=(640, 640), is_mask=True)
+    resized_mask = resize_and_center_image(masks[index], is_mask=True)
     combined = overlay_mask(resized_image, resized_mask)
     cv2.imshow('Image with Mask', combined)
 

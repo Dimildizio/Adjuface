@@ -2,6 +2,8 @@ import os
 import shutil
 import random
 import yaml
+import cv2
+
 
 # Define paths
 dataset_path = 'CelebAMask-HQ'
@@ -9,6 +11,12 @@ mask_path = os.path.join(dataset_path, 'CelebAMask-HQ-mask-anno')
 image_path = os.path.join(dataset_path, 'CelebA-HQ-img')  # Path to the CelebA-HQ images
 output_path = os.path.join(dataset_path, 'YOLOFormat')
 image_counter = 0
+
+
+def resize_image(image_path, output_size=(512, 512)):
+    """Resize an image to the given size."""
+    image = cv2.imread(image_path)
+    return cv2.resize(image, output_size)
 
 
 os.makedirs(output_path, exist_ok=True)
@@ -39,10 +47,12 @@ for folder_index in range(15):  # CelebFaceHQ got 15 folders (0-14)
             # Copy the corresponding image
             image_file_name = f'{image_counter}.jpg'  # Image files named like '1.jpg', '2.jpg', etc.
             image_file_path = os.path.join(image_path, image_file_name)
-            output_image_path = os.path.join(output_path, 'images', split, image_file_name)
+            #  output_image_path = os.path.join(output_path, 'images', split, image_file_name)
             if os.path.exists(image_file_path):  # Check if the image file exists
-                shutil.copy(image_file_path, output_image_path)
-
+                #  shutil.copy(image_file_path, output_image_path)
+                resized_image = resize_image(image_file_path)
+                output_image_path = os.path.join(output_path, 'images', split, image_file_name)
+                cv2.imwrite(output_image_path, resized_image)
             image_counter += 1
 
 # Create YAML file for dataset configuration
