@@ -30,7 +30,8 @@ def resize_and_center_image(image, size=(512, 512), is_mask=False):
 
 def overlay_mask(image, mask, alpha=0.3):
     """Overlay mask onto image with specified transparency."""
-    mask_indices = cv2.resize(mask, (image.shape[1], image.shape[0])) > 0  # Where mask is white
+    #  mask_indices = cv2.resize(mask, (image.shape[1], image.shape[0])) > 0  # Where mask is white
+    mask_indices = mask > 0
     overlay = image.copy()
     overlay[mask_indices] = (1 - alpha) * image[mask_indices] + alpha * np.array([200, 200, 0])
     return overlay
@@ -63,9 +64,7 @@ images, masks = load_images_and_masks(get_address('images'), get_address('labels
 index = 0
 
 while True:
-    resized_image = resize_and_center_image(images[index])
-    resized_mask = resize_and_center_image(masks[index], is_mask=True)
-    combined = overlay_mask(resized_image, resized_mask)
+    combined = overlay_mask(images[index], masks[index])
     cv2.imshow('Image with Mask', combined)
 
     key = cv2.waitKeyEx(0)
