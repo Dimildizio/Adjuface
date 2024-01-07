@@ -19,15 +19,15 @@ def get_contacts():
     return config
 
 
-def generate_filename():
+def generate_filename(folder='original'):
     while True:
-        filename = f'img_{random.randint(1, 999999)}.png'
+        filename = os.path.join('temp/'+folder, f'img_{random.randint(1, 999999)}.png')
         if not os.path.exists(filename):
             return filename
 
 
 async def handle_start(message):
-    await message.answer("Welcome! Send me a photo, and I'll process it.")
+    await message.answer("Welcome! Send me a photo of a person and I will return their face.")
 
 
 async def handle_support(message):
@@ -45,7 +45,7 @@ async def handle_contacts(message):
 
 async def handle_help(message):
     help_message = (
-        "This bot can only process photos. Here are the available commands:\n"
+        "This bot can only process photos that have people on it. Here are the available commands:\n"
         "/start - Start the bot\n"
         "/help - Display this help message\n"
         "/contacts - Show contacts list\n"
@@ -54,31 +54,13 @@ async def handle_help(message):
     await message.answer(help_message)
 
 
-async def handle_image(message):
-    try:
-        print(os.getcwd())
-        temp_dir = "temp"
-        os.makedirs(temp_dir, exist_ok=True)
-
-        temp_file = f"{temp_dir}/{message.photo[-1].file_id}.jpg"
-        new_file = f"{temp_dir}/{message.photo[-1].file_id}_modified.jpg"
-
-        await message.bot.download(message.photo[-1], destination=temp_file)
-        await get_face(temp_file, new_file)
-
-        await message.answer_photo(FSInputFile(new_file), caption="Here is your processed image")
-    except Exception as e:
-        print(e)    # TODO: log it
-        message.answer('Sorry must have been an error. Try again later.')
-
-
-async def alternative_handle_image(message: Message, token):
+async def handle_image(message: Message, token):
     #  face_processed_url = 'http://localhost:8000/images/'
     face_extraction_url = 'http://localhost:8000/extract_face'
     #  file_id = message.photo[-1].file_id
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
-    output = generate_filename()
+    output = generate_filename('result')
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -99,13 +81,16 @@ async def alternative_handle_image(message: Message, token):
                 if response.status == 200:
                     image_data = await response.read()
 
+                    orig = Image.open(io.BytesIO(content))
+                    orig.save(generate_filename(), format='PNG')
+
                     imgfile = Image.open(io.BytesIO(image_data))
                     imgfile.save(output, format='PNG')
 
                     inp_file = FSInputFile(output)
                     await message.answer_photo(photo=inp_file)
 
-                    os.remove(output)
+                    #os.remove(output)
                     print('Image sent')
                 else:
                     error_message = await response.text()
@@ -119,13 +104,11 @@ async def alternative_handle_image(message: Message, token):
 
 
 def setup_handlers(dp, bot_token):
-
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
 
     async def image_handler(message: Message):
-        await alternative_handle_image(message, bot_token)
+        await handle_image(message, bot_token)
     dp.message(F.photo)(image_handler)
-    # dp.message(F.photo)(lambda message: alternative_handle_image(message, bot_token))

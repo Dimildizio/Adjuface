@@ -14,7 +14,7 @@ def predict(model, img, size=(640, 640)):
     return prediction[0].masks
 
 
-def combine_masks(masks):
+def combine_masks(image, masks):
     combined_mask = np.zeros((image.height, image.width))
     for msk in masks:
         mask_np = msk.data[0].cpu().numpy()
@@ -24,7 +24,7 @@ def combine_masks(masks):
 
 
 def overlay(img, masks):
-    combined_mask = combine_masks(masks)
+    combined_mask = combine_masks(img, masks)
     plt.imshow(np.array(img))
     plt.imshow(combined_mask, cmap='gray', alpha=0.5)
     plt.axis('off')
@@ -51,11 +51,11 @@ def cutout_and_plot(img, msks):
 
 
 def cutout(img, masks):
-    combined_mask = combine_masks(masks)
+    combined_mask = combine_masks(img, masks)
     segmented_image = get_seg_mask(img, combined_mask)
     plt.imshow(segmented_image)
     plt.axis('off')
-
+    return segmented_image
 
 def get_seg_mask(img, combi_mask):
     image_rgba = img.convert("RGBA")
@@ -104,7 +104,7 @@ def get_image(image_path):
 
 
 if __name__ == '__main__':
-    target_photo = 'photo3.jpg'
+    target_photo = 'datasets/photo1.jpg'
     weights = 'seg_models/heads_weights.pt'
     seg_model = YOLO(weights)
     image = get_image(target_photo)

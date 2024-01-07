@@ -1,12 +1,14 @@
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from tempfile import NamedTemporaryFile
 import os
 import io
+from ultralytics import YOLO
+import torch
 
 
 file_db = {}  # TODO: change for real db
@@ -45,26 +47,62 @@ async def extract_face(file: UploadFile = File(...)):
     return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/png")
 
 
+
+def predict(model, img, size=(640, 640)):
+    image_tensor = torch.from_numpy(np.array(img.resize(size))).float().div(255).permute(2, 0, 1).unsqueeze(0)
+    prediction = model(image_tensor)
+    return prediction[0].masks
+
+
+def combine_masks(image, masks):
+    combined_mask = np.zeros((image.height, image.width))
+    for msk in masks:
+        mask_np = msk.data[0].cpu().numpy()
+        mask_resized = cv2.resize(mask_np, (image.width, image.height))
+        combined_mask = np.maximum(combined_mask, mask_resized)
+    return combined_mask
+
+
+def cutout(img, masks):
+    combined_mask = combine_masks(img, masks)
+    segmented_image = get_seg_mask(img, combined_mask)
+    return segmented_image
+
+def get_seg_mask(img, combi_mask):
+    image_rgba = img.convert("RGBA")
+    data = np.array(image_rgba)
+    alpha_channel = (combi_mask * 255).astype(np.uint8)
+    data[..., 3] = alpha_channel
+    segmented_image = Image.fromarray(data)
+    return segmented_image
+
+
+def get_no_face(original_image):
+    # Create a white canvas of the same size as the original image
+    white_canvas = Image.new("RGB", original_image.size, "white")
+    # Optionally, add text "No face" on it
+    draw = ImageDraw.Draw(white_canvas)
+    try:
+        # Use a truetype font if available, otherwise default to a simple font
+        font = ImageFont.truetype("arial.ttf", 50)
+    except IOError:
+        font = ImageFont.load_default()
+    text = "Чо с еблом?"
+    text_width, text_height = draw.textsize(text, font=font)
+    text_x = (white_canvas.width - text_width) // 2
+    text_y = (white_canvas.height - text_height) // 2
+    draw.text((text_x, text_y), text, fill="black", font=font)
+    return white_canvas
+
+
 async def get_face(temp_file, new_file):
+    weights = 'seg_models/heads_weights.pt'
+    seg_model = YOLO(weights)
     image = Image.open(temp_file)
-    img_cv = np.array(image)
-    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
-
-    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=(30, 30))
-
-    transparent_image = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    for (x, y, w, h) in faces:
-        face_region = image.crop((x, y, x + w, y + h))
-        transparent_image.paste(face_region, (x, y, x + w, y + h))
-
-        #cv2.rectangle(img_cv, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        #font = cv2.FONT_HERSHEY_SIMPLEX
-        #cv2.putText(img_cv, 'face', (x, y - 10), font, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
-    #image = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
-    #image.save(new_file)
-    transparent_image.save(new_file, format="PNG")
+    masks = predict(seg_model, image)
+    segmented_img = cutout(image, masks) if masks else get_no_face(image)
+    segmented_img.save(new_file, format="PNG")
     print('new file saved')
-    return transparent_image
+    return segmented_img
+
+
