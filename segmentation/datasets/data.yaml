@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['heads']
+
+roboflow:
+  workspace: dimildizio-qri0w
+  project: heads-segment
+  version: 2
+  license: Public Domain
+  url: https://universe.roboflow.com/dimildizio-qri0w/heads-segment/dataset/2
