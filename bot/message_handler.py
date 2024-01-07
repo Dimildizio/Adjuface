@@ -7,9 +7,7 @@ import yaml
 from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message
-from face_extraction.extract_face import get_face
 from PIL import Image
-# from fastapi import FastAPI, UploadFile, File
 # from bot.user_logger import log_user
 
 
@@ -31,11 +29,12 @@ async def handle_start(message):
 
 
 async def handle_support(message):
-    m = message.from_user
-    print(dir(m))
-    text = f'user requires help:\nids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
-    await message.bot.send_message(get_contacts()['my_id'], f'{text} requires help')
+    user = await user_contacts(message.from_user)
+    await message.bot.send_message(get_contacts()['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
+
+async def user_contacts(m):
+    return f'ids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
 
 
 async def handle_contacts(message):
@@ -55,9 +54,7 @@ async def handle_help(message):
 
 
 async def handle_image(message: Message, token):
-    #  face_processed_url = 'http://localhost:8000/images/'
     face_extraction_url = 'http://localhost:8000/extract_face'
-    #  file_id = message.photo[-1].file_id
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     output = generate_filename('result')
@@ -90,7 +87,7 @@ async def handle_image(message: Message, token):
                     inp_file = FSInputFile(output)
                     await message.answer_photo(photo=inp_file)
 
-                    #os.remove(output)
+                    #  os.remove(output)
                     print('Image sent')
                 else:
                     error_message = await response.text()
@@ -104,6 +101,8 @@ async def handle_image(message: Message, token):
 
 
 async def handle_text(message: Message):
+    text = await user_contacts(message.from_user)
+    print(f'User:{text}\nsaid:\t{message.text}')
     response_text = (
         "I'm currently set up to process photos only. "
         "Please send me a photo of a person, and I will return their face.")
