@@ -42,26 +42,48 @@ def cutout_and_plot(img, msks):
     for i, msk in enumerate(msks):
         mask_np = msk.data[0].cpu().numpy().squeeze()
         mask_resized = cv2.resize(mask_np, (image.width, image.height))
-        image_rgba = img.convert("RGBA")
-        data = np.array(image_rgba)
-        alpha_channel = (mask_resized * 255).astype(np.uint8)
-        data[..., 3] = alpha_channel
-        segmented_image = Image.fromarray(data)
+        segmented_image = get_seg_mask(img, mask_resized)
 
         axs[i].imshow(segmented_image)
-        axs[i].set_xticks([])  # Remove x-axis ticks
+        axs[i].set_xticks([])
         axs[i].set_yticks([])
         axs[i].set_facecolor('gray')
 
 
 def cutout(img, masks):
     combined_mask = combine_masks(masks)
+    segmented_image = get_seg_mask(img, combined_mask)
+    plt.imshow(segmented_image)
+    plt.axis('off')
+
+
+def get_seg_mask(img, combi_mask):
     image_rgba = img.convert("RGBA")
     data = np.array(image_rgba)
-    alpha_channel = (combined_mask * 255).astype(np.uint8)
+    alpha_channel = (combi_mask * 255).astype(np.uint8)
     data[..., 3] = alpha_channel
     segmented_image = Image.fromarray(data)
-    plt.imshow(segmented_image)
+    return segmented_image
+
+
+def combine_largest_mask(masks, image_size):
+    largest_area = 0
+    largest_mask = None
+    for msk in masks:
+        mask_np = msk.data[0].cpu().numpy()
+        mask_resized = cv2.resize(mask_np, image_size)
+        area = np.sum(mask_resized > 0)  # Calculate the area (sum of all positive pixels)
+        if area > largest_area:
+            largest_area = area
+            largest_mask = mask_resized
+    return largest_mask
+
+
+def cutout_largest_mask(img, masks):
+    image_size = (img.width, img.height)
+    largest_mask = combine_largest_mask(masks, image_size)
+    cutout_image = get_seg_mask(img, largest_mask)
+    plt.imshow(cutout_image)
     plt.axis('off')
 
 
@@ -70,9 +92,10 @@ def plot_img(img, msk, task=''):
         overlay(img, msk)
     elif task == 'masks':
         cutout_and_plot(img, msk)
+    elif task == 'largest':
+        cutout_largest_mask(img, msk)
     else:
         cutout(img, msk)
-
     plt.show()
 
 
@@ -81,9 +104,10 @@ def get_image(image_path):
 
 
 if __name__ == '__main__':
-    target_photo = 'photo.png'
+    target_photo = 'photo3.jpg'
     weights = 'seg_models/heads_weights.pt'
     seg_model = YOLO(weights)
     image = get_image(target_photo)
     mask = predict(seg_model, image)
-    plot_img(image, mask, 'masks')
+    for mode in ('masks', 'cutout', 'overlay', 'largest'):
+        plot_img(image, mask, mode)
