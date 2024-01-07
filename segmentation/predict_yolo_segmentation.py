@@ -30,6 +30,30 @@ def overlay(img, masks):
     plt.axis('off')
 
 
+def cutout_and_plot(img, msks):
+    """Monitor issue with creating too many masks"""
+    num_masks = len(msks)
+    masks_per_row = 4
+    num_rows = math.ceil(num_masks / masks_per_row)
+
+    fig, axs = plt.subplots(num_rows, masks_per_row, figsize=(12, 6))
+    axs = axs.flatten() if num_masks > 1 else [axs]
+
+    for i, msk in enumerate(msks):
+        mask_np = msk.data[0].cpu().numpy().squeeze()
+        mask_resized = cv2.resize(mask_np, (image.width, image.height))
+        image_rgba = img.convert("RGBA")
+        data = np.array(image_rgba)
+        alpha_channel = (mask_resized * 255).astype(np.uint8)
+        data[..., 3] = alpha_channel
+        segmented_image = Image.fromarray(data)
+
+        axs[i].imshow(segmented_image)
+        axs[i].set_xticks([])  # Remove x-axis ticks
+        axs[i].set_yticks([])
+        axs[i].set_facecolor('gray')
+
+
 def cutout(img, masks):
     combined_mask = combine_masks(masks)
     image_rgba = img.convert("RGBA")
@@ -44,6 +68,8 @@ def cutout(img, masks):
 def plot_img(img, msk, task=''):
     if task == 'overlay':
         overlay(img, msk)
+    elif task == 'masks':
+        cutout_and_plot(img, msk)
     else:
         cutout(img, msk)
 
