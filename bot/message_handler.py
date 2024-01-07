@@ -103,6 +103,13 @@ async def handle_image(message: Message, token):
         await message.answer('Sorry must have been an error. Try again later.')
 
 
+async def handle_text(message: Message):
+    response_text = (
+        "I'm currently set up to process photos only. "
+        "Please send me a photo of a person, and I will return their face.")
+    await message.answer(response_text)
+
+
 def setup_handlers(dp, bot_token):
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
@@ -112,3 +119,4 @@ def setup_handlers(dp, bot_token):
     async def image_handler(message: Message):
         await handle_image(message, bot_token)
     dp.message(F.photo)(image_handler)
+    dp.message(F.text)(handle_text)
