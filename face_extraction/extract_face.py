@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont, ImageDraw, ImageOps
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
@@ -54,24 +54,28 @@ def predict(model, img, size=(640, 640)):
     return prediction[0].masks
 
 
-def cutout_first_mask(img, masks):
-            # Use only the first mask
-            #if len(masks) > 0:
-            first_mask = masks[0].data[0].cpu().numpy()
-            mask_resized = cv2.resize(first_mask, (img.width, img.height))
-            segmented_image = get_seg_mask(img, mask_resized)
-            return segmented_image
-            #return None
+
+def get_seg_mask_2(img, combi_mask):
+    image_rgba = img.convert("RGBA")
+    data = np.array(image_rgba)
+    alpha_channel = (combi_mask * 255).astype(np.uint8)
+    data[..., 3] = alpha_channel
+    masked_image = Image.fromarray(data)
+    bbox = masked_image.getbbox()
+    if bbox:
+        cropped_image = masked_image.crop(bbox)
+        return cropped_image
+    else:
+        return masked_image
+
 
 def apply_mask_to_image(img, masks, coordinates=(191, 83, 247, 267), base_image_path='mona_lisa.png'):
-        mask=cutout_first_mask(img, masks)
-        mask = np.array(mask)[:, :, 3] / 255.0
-        base_image = cv2.imread(base_image_path)
-        x1, y1, x2, y2 = coordinates
-        ask_resized = cv2.resize(mask, (x2 - x1, y2 - y1))
-        for i in range(3):  # Assuming base image is in BGR format
-            base_image[y1:y2, x1:x2, i] = base_image[y1:y2, x1:x2, i] * (1 - mask_resized) + mask_resized * 255
-        return Image.fromarray(cv2.cvtColor(base_image, cv2.COLOR_BGR2RGB))
+    first_mask = masks[0].data[0].cpu().numpy()
+    mask_resized = cv2.resize(first_mask, (img.width, img.height), interpolation=cv2.INTER_NEAREST)
+    seg_img = get_seg_mask_2(img, mask_resized)
+    #seg_img.show()
+    return seg_img
+
 
 def combine_masks(image, masks):
     combined_mask = np.zeros((image.height, image.width))
