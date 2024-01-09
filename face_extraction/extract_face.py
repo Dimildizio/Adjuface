@@ -54,8 +54,19 @@ def predict(model, img, size=(640, 640)):
     return prediction[0].masks
 
 
+async def resize_image_preserve_aspect_ratio(image, size):
+    width, height = image.size
+    aspect_ratio = width / height
 
-def get_seg_mask_2(img, combi_mask):
+    if aspect_ratio > 1:
+        new_width = size[0]
+        new_height = int(new_width / aspect_ratio)
+    else:
+        new_height = size[1]
+        new_width = int(new_height * aspect_ratio)
+    return image.resize((new_width, new_height))
+
+async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
     image_rgba = img.convert("RGBA")
     data = np.array(image_rgba)
     alpha_channel = (combi_mask * 255).astype(np.uint8)
@@ -63,16 +74,24 @@ def get_seg_mask_2(img, combi_mask):
     masked_image = Image.fromarray(data)
     bbox = masked_image.getbbox()
     if bbox:
-        cropped_image = masked_image.crop(bbox)
-        return cropped_image
+        resized_image =  await resize_image_preserve_aspect_ratio(masked_image.crop(bbox), size)
+        result_image = Image.new("RGBA", size)
+        x_offset = (size[0] - resized_image.width) // 2
+        y_offset = (size[1] - resized_image.height) // 2
+        result_image.paste(resized_image, (x_offset, y_offset))
+        result_image.save('face.png')
+        return result_image
     else:
         return masked_image
 
-
-def apply_mask_to_image(img, masks, coordinates=(191, 83, 247, 267), base_image_path='mona_lisa.png'):
+async def apply_mask_to_image(img, masks, coordinates=(191, 83), base_image_path='mona_lisa.png'):
     first_mask = masks[0].data[0].cpu().numpy()
     mask_resized = cv2.resize(first_mask, (img.width, img.height), interpolation=cv2.INTER_NEAREST)
-    seg_img = get_seg_mask_2(img, mask_resized)
+    seg_img = await get_seg_mask_2(img, mask_resized)
+    with Image.open(base_image_path) as mona_lisa:
+        mona_lisa.paste(seg_img, coordinates, seg_img)
+        return mona_lisa
+
     #seg_img.show()
     return seg_img
 
@@ -101,12 +120,9 @@ def get_seg_mask(img, combi_mask):
 
 
 def get_no_face(original_image):
-    # Create a white canvas of the same size as the original image
     white_canvas = Image.new("RGB", original_image.size, "white")
-    # Optionally, add text "No face" on it
     draw = ImageDraw.Draw(white_canvas)
     try:
-        # Use a truetype font if available, otherwise default to a simple font
         font = ImageFont.truetype("arial.ttf", 50)
     except IOError:
         font = ImageFont.load_default()
@@ -123,7 +139,7 @@ async def get_face(temp_file, new_file):
     seg_model = YOLO(weights)
     image = Image.open(temp_file)
     masks = predict(seg_model, image)
-    segmented_img =  apply_mask_to_image(image,masks)  # cutout(image, masks) if masks else get_no_face(image)
+    segmented_img =  await apply_mask_to_image(image,masks) if masks else get_no_face(image)# cutout(image, masks) if masks else get_no_face(image)
     segmented_img.save(new_file, format="PNG")
     print('new file saved')
     return segmented_img
