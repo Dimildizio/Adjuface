@@ -54,6 +54,25 @@ def predict(model, img, size=(640, 640)):
     return prediction[0].masks
 
 
+def cutout_first_mask(img, masks):
+            # Use only the first mask
+            #if len(masks) > 0:
+            first_mask = masks[0].data[0].cpu().numpy()
+            mask_resized = cv2.resize(first_mask, (img.width, img.height))
+            segmented_image = get_seg_mask(img, mask_resized)
+            return segmented_image
+            #return None
+
+def apply_mask_to_image(img, masks, coordinates=(191, 83, 247, 267), base_image_path='mona_lisa.png'):
+        mask=cutout_first_mask(img, masks)
+        mask = np.array(mask)[:, :, 3] / 255.0
+        base_image = cv2.imread(base_image_path)
+        x1, y1, x2, y2 = coordinates
+        ask_resized = cv2.resize(mask, (x2 - x1, y2 - y1))
+        for i in range(3):  # Assuming base image is in BGR format
+            base_image[y1:y2, x1:x2, i] = base_image[y1:y2, x1:x2, i] * (1 - mask_resized) + mask_resized * 255
+        return Image.fromarray(cv2.cvtColor(base_image, cv2.COLOR_BGR2RGB))
+
 def combine_masks(image, masks):
     combined_mask = np.zeros((image.height, image.width))
     for msk in masks:
@@ -100,7 +119,7 @@ async def get_face(temp_file, new_file):
     seg_model = YOLO(weights)
     image = Image.open(temp_file)
     masks = predict(seg_model, image)
-    segmented_img = cutout(image, masks) if masks else get_no_face(image)
+    segmented_img =  apply_mask_to_image(image,masks)  # cutout(image, masks) if masks else get_no_face(image)
     segmented_img.save(new_file, format="PNG")
     print('new file saved')
     return segmented_img
