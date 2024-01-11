@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-from PIL import Image, ImageFont, ImageDraw, ImageOps
+from PIL import Image, ImageFont, ImageDraw
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
 from tempfile import NamedTemporaryFile
-import os
 import io
 from ultralytics import YOLO
 import torch
@@ -47,7 +46,6 @@ async def extract_face(file: UploadFile = File(...)):
     return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/png")
 
 
-
 def predict(model, img, size=(640, 640)):
     image_tensor = torch.from_numpy(np.array(img.resize(size))).float().div(255).permute(2, 0, 1).unsqueeze(0)
     prediction = model(image_tensor)
@@ -66,6 +64,7 @@ async def resize_image_preserve_aspect_ratio(image, size):
         new_width = int(new_height * aspect_ratio)
     return image.resize((new_width, new_height))
 
+
 async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
     image_rgba = img.convert("RGBA")
     data = np.array(image_rgba)
@@ -74,7 +73,7 @@ async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
     masked_image = Image.fromarray(data)
     bbox = masked_image.getbbox()
     if bbox:
-        resized_image =  await resize_image_preserve_aspect_ratio(masked_image.crop(bbox), size)
+        resized_image = await resize_image_preserve_aspect_ratio(masked_image.crop(bbox), size)
         result_image = Image.new("RGBA", size)
         x_offset = (size[0] - resized_image.width) // 2
         y_offset = (size[1] - resized_image.height) // 2
@@ -84,16 +83,17 @@ async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
     else:
         return masked_image
 
+
 async def apply_mask_to_image(img, masks, coordinates=(191, 83), base_image_path='mona_lisa.png'):
     first_mask = masks[0].data[0].cpu().numpy()
     mask_resized = cv2.resize(first_mask, (img.width, img.height), interpolation=cv2.INTER_NEAREST)
     seg_img = await get_seg_mask_2(img, mask_resized)
-    with Image.open(base_image_path) as mona_lisa:
-        mona_lisa.paste(seg_img, coordinates, seg_img)
-        return mona_lisa
-
-    #seg_img.show()
-    return seg_img
+    if len(base_image_path) > 4:  #  longer than '.png'
+        with Image.open(base_image_path) as mona_lisa:
+            mona_lisa.paste(seg_img, coordinates, seg_img)
+            return mona_lisa
+    else:
+        return seg_img
 
 
 def combine_masks(image, masks):
@@ -109,6 +109,7 @@ def cutout(img, masks):
     combined_mask = combine_masks(img, masks)
     segmented_image = get_seg_mask(img, combined_mask)
     return segmented_image
+
 
 def get_seg_mask(img, combi_mask):
     image_rgba = img.convert("RGBA")
@@ -139,9 +140,8 @@ async def get_face(temp_file, new_file):
     seg_model = YOLO(weights)
     image = Image.open(temp_file)
     masks = predict(seg_model, image)
-    segmented_img =  await apply_mask_to_image(image,masks) if masks else get_no_face(image)# cutout(image, masks) if masks else get_no_face(image)
+    segmented_img = await apply_mask_to_image(image, masks, base_image_path='') if masks else get_no_face(image)
+    # segmented_img = cutout(image, masks) if masks else get_no_face(image)
     segmented_img.save(new_file, format="PNG")
     print('new file saved')
     return segmented_img
-
-
