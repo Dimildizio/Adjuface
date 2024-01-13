@@ -71,6 +71,7 @@ async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
     alpha_channel = (combi_mask * 255).astype(np.uint8)
     data[..., 3] = alpha_channel
     masked_image = Image.fromarray(data)
+    #masked_image = transfer_style()
     bbox = masked_image.getbbox()
     if bbox:
         resized_image = await resize_image_preserve_aspect_ratio(masked_image.crop(bbox), size)
@@ -79,6 +80,7 @@ async def get_seg_mask_2(img, combi_mask, size=(240, 260)):
         y_offset = (size[1] - resized_image.height) // 2
         result_image.paste(resized_image, (x_offset, y_offset))
         result_image.save('face.png')
+        result_image = transfer_style()
         return result_image
     else:
         return masked_image
@@ -91,6 +93,8 @@ async def apply_mask_to_image(img, masks, coordinates=(191, 83), base_image_path
     if len(base_image_path) > 4:  #  longer than '.png'
         with Image.open(base_image_path) as mona_lisa:
             mona_lisa.paste(seg_img, coordinates, seg_img)
+            #mona_lisa.save('face.png')
+            #mona_lisa = transfer_style()
             return mona_lisa
     else:
         return seg_img
@@ -140,8 +144,58 @@ async def get_face(temp_file, new_file):
     seg_model = YOLO(weights)
     image = Image.open(temp_file)
     masks = predict(seg_model, image)
-    segmented_img = await apply_mask_to_image(image, masks, base_image_path='') if masks else get_no_face(image)
+    segmented_img = await apply_mask_to_image(image, masks, base_image_path='mona_lisa.png') if masks else get_no_face(image)
     # segmented_img = cutout(image, masks) if masks else get_no_face(image)
     segmented_img.save(new_file, format="PNG")
     print('new file saved')
     return segmented_img
+
+
+'''
+#####################################################################
+CODE BELOW REFACTOR TO SEPARATE MICROSERVICE VIA FASTAPI MODULE
+#####################################################################
+'''
+
+import tensorflow as tf
+import numpy as np
+from PIL import Image
+
+
+loaded_model = tf.saved_model.load('models')
+
+
+def preprocess_image(image_path):
+    img = tf.io.read_file(image_path)
+    img = tf.image.decode_image(img, channels=3)
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    img = img[tf.newaxis, :]
+    return img
+
+
+def transfer_style(content_img_path='face.png', style_image_path='lisahair.png'):
+    # Load the content image and extract the alpha channel if it exists
+    content_image_pil = Image.open(content_img_path)
+    alpha_channel = content_image_pil.split()[-1] if content_image_pil.mode == 'RGBA' else None
+
+    # Preprocess the images
+    content_image = preprocess_image(content_img_path)
+    style_image = preprocess_image(style_image_path)
+
+    # Perform style transfer
+    stylized_image = loaded_model(tf.constant(content_image), tf.constant(style_image))[0]
+    stylized_image = np.squeeze(stylized_image.numpy() * 255).astype(np.uint8)
+
+    # Convert the stylized image to PIL format
+    stylized_image_pil = Image.fromarray(stylized_image, 'RGB')
+
+    # Reapply the alpha channel if it existed
+    if alpha_channel is not None:
+        stylized_image_pil.putalpha(alpha_channel)
+
+    # Save the output image
+    stylized_image_pil.save('output_stylized_image.png', format='PNG')
+
+    return stylized_image_pil
+
+
