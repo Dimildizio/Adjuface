@@ -9,6 +9,7 @@ from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message
 from PIL import Image
 # from bot.user_logger import log_user
+from bot.db_handler import log_user_info, fetch_user_data
 
 
 def get_contacts():
@@ -58,7 +59,10 @@ async def handle_image(message: Message, token):
     face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
-    output = generate_filename('result')
+    input_path = generate_filename()
+    output_path = generate_filename('result')
+
+    await log_user_info(message, 'image', input_path, output_path)
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -80,12 +84,12 @@ async def handle_image(message: Message, token):
                     image_data = await response.read()
 
                     orig = Image.open(io.BytesIO(content))
-                    orig.save(generate_filename(), format='PNG')
+                    orig.save(input_path, format='PNG')
 
                     img_file = Image.open(io.BytesIO(image_data))
-                    img_file.save(output, format='PNG')
+                    img_file.save(output_path, format='PNG')
 
-                    inp_file = FSInputFile(output)
+                    inp_file = FSInputFile(output_path)
                     await message.answer_photo(photo=inp_file)
 
                     #  os.remove(output)
@@ -102,11 +106,13 @@ async def handle_image(message: Message, token):
 
 
 async def handle_text(message: Message):
-    text = await user_contacts(message.from_user)
-    print(f'User:{text}\nsaid:\t{message.text}')
+    #  text = await user_contacts(message.from_user)
+    # print(f'User:{text}\n said:\t{message.text}')
+    await log_user_info(message, 'text')
     response_text = (
         "I'm currently set up to process photos only. "
         "Please send me a photo of a person, and I will return their face.")
+    await fetch_user_data(message.from_user.id)
     await message.answer(response_text)
 
 
