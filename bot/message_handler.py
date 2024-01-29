@@ -33,6 +33,7 @@ async def handle_support(message):
     await message.bot.send_message(get_contacts()['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
+
 async def user_contacts(m):
     return f'ids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
 
@@ -54,7 +55,7 @@ async def handle_help(message):
 
 
 async def handle_image(message: Message, token):
-    face_extraction_url = 'http://localhost:8000/extract_face'
+    face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     output = generate_filename('result')
@@ -81,8 +82,8 @@ async def handle_image(message: Message, token):
                     orig = Image.open(io.BytesIO(content))
                     orig.save(generate_filename(), format='PNG')
 
-                    imgfile = Image.open(io.BytesIO(image_data))
-                    imgfile.save(output, format='PNG')
+                    img_file = Image.open(io.BytesIO(image_data))
+                    img_file.save(output, format='PNG')
 
                     inp_file = FSInputFile(output)
                     await message.answer_photo(photo=inp_file)
