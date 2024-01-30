@@ -3,7 +3,7 @@ import logging
 import yaml
 from aiogram import Bot, Dispatcher
 from bot.message_handler import setup_handlers
-import bot.db_handler
+from bot.db_requests import initialize_database
 
 
 async def main(dp, iobot):
@@ -17,14 +17,14 @@ def get_token():
     return config['token']
 
 
-async def initialize_database():
-    await bot.db_handler.initialize_database()
+async def init_database():
+    await initialize_database()
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
+    logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.WARN)
     ibot = Bot(token=get_token())
     dispatcher = Dispatcher()
-    asyncio.run(initialize_database())
+    asyncio.run(init_database())
     asyncio.run(main(dispatcher, ibot))

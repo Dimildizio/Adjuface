@@ -15,7 +15,7 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-mona_lisa = 'cyber.png'
+mona_lisa = 'furry.png'
 
 
 

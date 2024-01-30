@@ -9,7 +9,7 @@ from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message
 from PIL import Image
-from bot.db_handler import log_user_info, fetch_user_data
+from bot.db_requests import log_input_image_data, log_output_image_data, log_text_data, fetch_user_data
 
 
 def get_contacts():
@@ -69,6 +69,7 @@ async def handle_image(message: Message, token):
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     input_path = generate_filename()
+    await log_input_image_data(message, input_path)
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -90,7 +91,7 @@ async def handle_image(message: Message, token):
                 if response.status == 200:
                     image_data_list = await response.text()
                     image_paths = json.loads(image_data_list)
-                    await log_user_info(message, 'image', input_path, image_paths)  # logging
+                    await log_output_image_data(message, input_path, image_paths)   # logging to db
 
                     for output_path in image_paths:
                         inp_file = FSInputFile(output_path)
@@ -109,10 +110,12 @@ async def handle_image(message: Message, token):
 
 
 async def handle_text(message: Message):
-    await log_user_info(message, 'text')
+    print("LOGGING TEXT")
+    await log_text_data(message)
     response_text = (
         "I'm currently set up to process photos only. "
         "Please send me a photo of a person, and I will return their face.")
+    print('GETTING USER DATA')
     await fetch_user_data(message.from_user.id)
     await message.answer(response_text)
 
