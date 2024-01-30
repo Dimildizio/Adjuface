@@ -8,7 +8,6 @@ async def initialize_database():
     async with aiosqlite.connect(DATABASE_FILE) as db:
         cursor = await db.cursor()
 
-        # Create a table to store user information
         await cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,12 +68,12 @@ async def log_user_info(message, data_type, *args):
             )
         elif data_type == 'image':
             input_path = args[0] if args else None
-            output_path = args[1] if args else None
-            # Log image data (input_path and output_path)
-            await cursor.execute(
-                "INSERT INTO user_data (user_id, username, first_name, last_name, mode, input_path, output_path) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (user_id, username, first_name, last_name, mode, input_path, output_path)
-            )
+            output_paths = args[1] if args else None
+            for output_path in output_paths:
+                await cursor.execute(
+                    "INSERT INTO user_data (user_id, username, first_name, last_name, mode, input_path, output_path) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (user_id, username, first_name, last_name, mode, input_path, output_path)
+                )
 
         # Insert button click log into the user_logs table
         await cursor.execute(

@@ -1,5 +1,6 @@
 import aiohttp
 import io
+import json
 import random
 import os
 import yaml
@@ -8,7 +9,6 @@ from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message
 from PIL import Image
-# from bot.user_logger import log_user
 from bot.db_handler import log_user_info, fetch_user_data
 
 
@@ -23,6 +23,10 @@ def generate_filename(folder='original'):
         filename = os.path.join('temp/'+folder, f'img_{random.randint(1, 999999)}.png')
         if not os.path.exists(filename):
             return filename
+
+
+def get_n_name(name, n):
+    return f'{name[:-4]}_{n}.png'
 
 
 async def handle_start(message):
@@ -55,14 +59,16 @@ async def handle_help(message):
     await message.answer(help_message)
 
 
+async def save_img(img, img_path):
+    orig = Image.open(io.BytesIO(img))
+    orig.save(img_path, format='PNG')
+
+
 async def handle_image(message: Message, token):
     face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     input_path = generate_filename()
-    output_path = generate_filename('result')
-
-    await log_user_info(message, 'image', input_path, output_path)
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -70,30 +76,27 @@ async def handle_image(message: Message, token):
                 if response.status == 200:
                     print('Image downloaded')
                     content = await response.read()
+                    await save_img(content, input_path)
                 else:
                     error_message = await response.text()
                     print(error_message)
                     await message.answer('Failed to download image. Please try again')
                     return
-            dataform = aiohttp.FormData()
-            dataform.add_field('file', content, filename='image.png', content_type='image/png')
-            async with session.post(face_extraction_url, data=dataform) as response:
-                # {'file':('image.jpg', content, 'image/jpeg')}) as response:
-                print('Sending image through fastapi')
+
+            async with session.post(face_extraction_url, data={'file_path': os.path.join(
+                                                                os.getcwd(), input_path)}) as response:
+                print('Sending image path through fastapi')
+
                 if response.status == 200:
-                    image_data = await response.read()
+                    image_data_list = await response.text()
+                    image_paths = json.loads(image_data_list)
+                    await log_user_info(message, 'image', input_path, image_paths)  # logging
 
-                    orig = Image.open(io.BytesIO(content))
-                    orig.save(input_path, format='PNG')
+                    for output_path in image_paths:
+                        inp_file = FSInputFile(output_path)
+                        await message.answer_photo(photo=inp_file)
+                        print('Image sent')
 
-                    img_file = Image.open(io.BytesIO(image_data))
-                    img_file.save(output_path, format='PNG')
-
-                    inp_file = FSInputFile(output_path)
-                    await message.answer_photo(photo=inp_file)
-
-                    #  os.remove(output)
-                    print('Image sent')
                 else:
                     error_message = await response.text()
                     print(error_message)
@@ -106,8 +109,6 @@ async def handle_image(message: Message, token):
 
 
 async def handle_text(message: Message):
-    #  text = await user_contacts(message.from_user)
-    # print(f'User:{text}\n said:\t{message.text}')
     await log_user_info(message, 'text')
     response_text = (
         "I'm currently set up to process photos only. "

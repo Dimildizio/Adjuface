@@ -1,17 +1,22 @@
-import io
 import cv2
+import os
 
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI,  Form
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
-from tempfile import NamedTemporaryFile
 
 
-input_img_path = 'img_5147.png'
-mona_lisa = 'mona_lisa.png'
+app = FastAPI()
+app.add_middleware(CORSMiddleware,
+                   allow_origins=["*"],  # Allows all origins
+                   allow_credentials=True,
+                   allow_methods=["*"],  # Allows all methods
+                   allow_headers=["*"],)  # Allows all headers
+
+mona_lisa = 'cyber.png'
+
 
 
 def get_swapp():
@@ -32,19 +37,17 @@ def load_face(swapp, img_path):
 
 async def swap_faces(source_path, target_path=mona_lisa):
     source_faces = load_face(SWAPP, source_path)
-
-    img_target = cv2.imread(target_path)  # could remove later
-    target_face = SWAPP.get(img_target)[0]
+    target_face = load_face(SWAPP, target_path)[0]
     result_img = target_img.copy()
-
+    result_faces = []
     try:
         for num, face in enumerate(source_faces):
             result_img = SWAPPER.get(result_img, target_face, face, paste_back=True)
-            #  cv2.imwrite(f"face_{num}.jpg", result_img)
-            return Image.fromarray(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB))  # TODO: return multiple images
+            result_faces.append(Image.fromarray(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)))
     except Exception as e:
         print('EXCEPTION', e)
         return None
+    return result_faces
 
 
 async def get_no_face(original_image_path):
@@ -63,42 +66,31 @@ async def get_no_face(original_image_path):
     return white_canvas
 
 
-async def get_face(temp_file, new_file):
-    img = await swap_faces(temp_file, target_path=mona_lisa)
-    if img is None:
-        img = await get_no_face(temp_file)
-    img.save(new_file, format="PNG")
-    print('new file saved')
-    return img
-
-
-target_img = cv2.imread(mona_lisa)
-SWAPP = get_swapp()
-SWAPPER = get_swapper()
-#  get_face(input_img_path, input_img_path[:-4]+'restyled.png')
-
-file_db = {}  # TODO: change for real db
-app = FastAPI()
-app.add_middleware(CORSMiddleware,
-                   allow_origins=["*"],  # Allows all origins
-                   allow_credentials=True,
-                   allow_methods=["*"],  # Allows all methods
-                   allow_headers=["*"],)  # Allows all headers
+async def get_face(temp_file):
+    imgs = await swap_faces(temp_file, target_path=mona_lisa)
+    saved_files = []
+    if imgs is None or len(imgs) == 0:
+        imgs = [await get_no_face(temp_file)]
+    for i, img in enumerate(imgs):
+        name = get_n_name(temp_file, i)
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/temp/result'
+        name = os.path.join(root_dir, os.path.basename(name))
+        img.save(name, format='PNG')
+        saved_files.append(name)
+    #print(saved_files)
+    return saved_files
 
 
 @app.post('/insighter')
-async def extract_face(file: UploadFile = File(...)):
-    with NamedTemporaryFile(delete=False, suffix='.jpg') as tempfile:
-        contents = await file.read()
-        tempfile.write(contents)
+async def extract_face(file_path: str = Form(...)):
+    saved_faces = await get_face(file_path)
+    return saved_faces
 
-    filename = tempfile.name
-    new_filename = filename[-4]+'modified.png'  # .replace('.jpg', '_modified.png')
 
-    await get_face(filename, new_filename)
-    #  TODO: could just send Image file
-    img = Image.open(new_filename)
-    img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='PNG')
-    img_byte_arr = img_byte_arr.getvalue()
-    return StreamingResponse(io.BytesIO(img_byte_arr), media_type="image/png")
+def get_n_name(name, n):
+    return f'{name[:-4]}_{n}.png'
+
+
+target_img = cv2.imread(mona_lisa)  # upload once
+SWAPP = get_swapp()
+SWAPPER = get_swapper()
