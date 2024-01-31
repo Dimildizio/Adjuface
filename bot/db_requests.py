@@ -100,28 +100,45 @@ async def insert_message(user_id, text_data):
             if user:
                 message = Message(user_id=user.id, text_data=text_data)
                 session.add(message)
-            print('MEGAMESSAGE', message)
             await session.commit()
 
 
-async def insert_image_name(user_id, input_image_name, output_image_names):
+async def fetch_image_names_by_user_id(user_id):
+    async with AsyncSession(async_engine) as session:
+        result = await session.execute(
+            select(ImageName).filter_by(user_id=user_id)
+        )
+        image_names = result.scalars().all()
 
+        image_name_dict = {}
+        if image_names:
+            for image_name in image_names:
+                image_name_dict[image_name.input_image_name] = image_name.output_image_names
+        return image_name_dict
+
+
+async def create_image_entry(user_id, input_image_name, output_image_names=None):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            # Create a new entry
+            new_entry = ImageName(user_id=user_id,
+                                  input_image_name=input_image_name,
+                                  output_image_names=output_image_names)
+            session.add(new_entry)
+            await session.commit()
+
+
+async def update_image_entry(user_id, input_image_name, output_image_names):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
             existing_entry = await session.execute(select(ImageName).filter_by(
-                                    user_id=user_id, input_image_name=input_image_name))
+                user_id=user_id, input_image_name=input_image_name))
             existing_entry = existing_entry.scalar_one_or_none()
-
             str_outputs = ','.join(output_image_names) if output_image_names else None
             if existing_entry:
                 existing_entry.output_image_names = str_outputs
-                print("CHANGING OUTPUT", existing_entry.output_image_names)
             else:
-                # Create a new entry
-                new_entry = ImageName(user_id=user_id, input_image_name=input_image_name,
-                                      output_image_names=str_outputs)
-                session.add(new_entry)
-            #await fetch_user_data(user_id)
+                print("Entry not found for update.")
             await session.commit()
 
 
@@ -144,13 +161,12 @@ async def log_text_data(message):
 # exist_user_check - wrappers don't want to async work
 async def log_input_image_data(message, input_image_name):
     await exist_user_check(message)
-    await insert_image_name(message.from_user.id, input_image_name, None)
+    await create_image_entry(message.from_user.id, input_image_name)
 
 
 async def log_output_image_data(message, input_image_name, output_image_names):
-    #await exist_user_check(message)
-    #  for output_image_name in output_image_names:
-    await insert_image_name(message.from_user.id, input_image_name, output_image_names)
+    await exist_user_check(message)
+    await update_image_entry(message.from_user.id, input_image_name, output_image_names)
 
 
 async def run_sync_db_operation(operation):
@@ -163,33 +179,43 @@ async def run_sync_db_operation(operation):
 async def fetch_user_data(user_id):
     async with AsyncSession(async_engine) as session:
         result = await session.execute(
-            select(User).where(User.user_id == user_id).options(selectinload(User.messages),
-                                                                selectinload(User.image_names))
+            select(User).where(User.user_id == user_id).options(selectinload(User.messages))
         )
         user = result.scalar_one_or_none()
+        # Fetch messages
         if user:
             messages = ', '.join([message.text_data for message in user.messages])
-            # Iterate through image names and print each one
-            image_names = [f"{image_name.input_image_name} ({image_name.output_image_names})"
-                           for image_name in user.image_names]
-            print('WE ARE IMG NAMES', image_names)
-            image_names = ', '.join(image_names)
-            print(f"User: {user.username}, Messages: [{messages}], Images: [{image_names}]")
+
+            # Fetch image names
+            image_names_dict = await fetch_image_names_by_user_id(user_id)
+            if image_names_dict:
+                image_names = [f"original: {input_image} " 
+                               f"output [{len(output_images.split(',')) if output_images else 0} img]:" 
+                               f"{output_images})" for input_image, output_images in image_names_dict.items()]
+                image_names = '\n\t\t\t'.join(image_names)
+                print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
+                      f"\n\tMode: {user.mode}"
+                      f"\n\tImg_num: {len(image_names_dict.values()) + len(image_names_dict.keys())}"
+                      f"\n\tMessages: [{messages}]"
+                      f"\n\tImages: [{image_names}]")
+            else:
+                print(f"User: {user.username}, Messages: [{messages}], Images: []")
         else:
             print("User not found")
+
 
 async def test_main():
     await initialize_database()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
     await insert_user(user_id=12345, username='testuser1', first_name='Test1', last_name='User1', mode=1)
     await insert_message(user_id=12345, text_data='Hello, World 1!')
-    await insert_image_name(user_id=12345, input_image_name='input1.jpg',
-                            output_image_names='output1_1.jpg,output1_2.jpg')
+    await create_image_entry(user_id=12345, input_image_name='input1.jpg',
+                             output_image_names='output1_1.jpg,output1_2.jpg')
 
     await insert_user(user_id=67890, username='testuser2', first_name='Test2', last_name='User2', mode=2)
     await insert_message(user_id=67890, text_data='Hello, World 2!')
-    await insert_image_name(user_id=67890, input_image_name='input2.jpg',
-                            output_image_names='output2_1.jpg,output2_2.jpg')
+    await update_image_entry(user_id=67890, input_image_name='input2.jpg',
+                             output_image_names='output2_1.jpg,output2_2.jpg')
 
     await fetch_user_data(12345)
     await fetch_user_data(67890)
@@ -197,8 +223,8 @@ async def test_main():
 
     await insert_user(user_id=54321, username='testuser3', first_name='Test3', last_name='User3', mode=1)
     await insert_message(user_id=54321, text_data='Hello, World 3!')
-    await insert_image_name(user_id=54321, input_image_name='input3.jpg',
-                            output_image_names='output3_1.jpg,output3_2.jpg')
+    await update_image_entry(user_id=54321, input_image_name='input3.jpg',
+                             output_image_names='output3_1.jpg,output3_2.jpg')
     # Fetch and print all data again to see the changes
     await fetch_user_data(12345)
     await fetch_user_data(67890)

@@ -10,3 +10,4 @@ uvicorn
 aiohttp~=3.9.1
 opencv-python
 insightface
+sqlalchemy

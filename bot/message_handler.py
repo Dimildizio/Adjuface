@@ -22,7 +22,7 @@ def generate_filename(folder='original'):
     while True:
         filename = os.path.join('temp/'+folder, f'img_{random.randint(1, 999999)}.png')
         if not os.path.exists(filename):
-            return filename
+            return os.path.join(os.getcwd(), filename)
 
 
 def get_n_name(name, n):
@@ -84,8 +84,7 @@ async def handle_image(message: Message, token):
                     await message.answer('Failed to download image. Please try again')
                     return
 
-            async with session.post(face_extraction_url, data={'file_path': os.path.join(
-                                                                os.getcwd(), input_path)}) as response:
+            async with session.post(face_extraction_url, data={'file_path': input_path}) as response:
                 print('Sending image path through fastapi')
 
                 if response.status == 200:

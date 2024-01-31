@@ -15,8 +15,7 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-mona_lisa = 'furry.png'
-
+mona_lisa = 'ken.png'
 
 
 def get_swapp():
@@ -77,7 +76,6 @@ async def get_face(temp_file):
         name = os.path.join(root_dir, os.path.basename(name))
         img.save(name, format='PNG')
         saved_files.append(name)
-    #print(saved_files)
     return saved_files
 
 
