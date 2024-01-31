@@ -1,4 +1,3 @@
-import logging
 from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, func
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -7,8 +6,9 @@ from sqlalchemy.orm import selectinload
 
 DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
-#  logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-#  logging.getLogger('sqlite').setLevel(logging.ERROR)
+# import logging
+# logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+# logging.getLogger('sqlite').setLevel(logging.ERROR)
 
 
 Base = declarative_base()
@@ -24,6 +24,8 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     mode = Column(Integer, default=1)
+    status = Column(String, default='free')
+    requests_left = Column(Integer, default=100)
 
     messages = relationship("Message", back_populates="user")
     image_names = relationship("ImageName", back_populates="user")
@@ -72,7 +74,6 @@ async def insert_user(user_id, username, first_name, last_name, mode=1):
                 existing_user.username = username
                 existing_user.first_name = first_name
                 existing_user.last_name = last_name
-                existing_user.mode = mode
             await session.commit()
 
 
@@ -181,29 +182,32 @@ async def run_sync_db_operation(operation):
 async def fetch_user_data(user_id):
     async with AsyncSession(async_engine) as session:
         result = await session.execute(
-            select(User).where(User.user_id == user_id).options(selectinload(User.messages))
-        )
+            select(User).where(User.user_id == user_id).options(selectinload(User.messages)))
         user = result.scalar_one_or_none()
-        # Fetch messages
+
         if user:
             messages = ', '.join([message.text_data for message in user.messages])
-
-            # Fetch image names
-            image_names_dict = await fetch_image_names_by_user_id(user_id)
-            if image_names_dict:
-                image_names = [f"original: {input_image} " 
-                               f"output [{len(output_images.split(',')) if output_images else 0} img]:" 
-                               f"{output_images})" for input_image, output_images in image_names_dict.items()]
-                image_names = '\n\t\t\t'.join(image_names)
-                print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
-                      f"\n\tMode: {user.mode}"
-                      f"\n\tImg_num: {len(image_names_dict.values()) + len(image_names_dict.keys())}"
-                      f"\n\tMessages: [{messages}]"
-                      f"\n\tImages: [{image_names}]")
-            else:
-                print(f"User: {user.username}, Messages: [{messages}], Images: []")
+            await format_userdata_output(user, messages)
         else:
             print("User not found")
+
+
+async def format_userdata_output(user, messages):
+    image_names_dict = await fetch_image_names_by_user_id(user.user_id)
+    if image_names_dict:
+        image_names = [f"original: {input_image} "
+                       f"output [{len(output_images.split(',')) if output_images else 0} img]:"
+                       f"{output_images})" for input_image, output_images in image_names_dict.items()]
+        image_names = '\n\t\t\t'.join(image_names)
+        print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
+              f"\n\tMode: {user.mode}"
+              f"\n\tStatus: {user.status}"
+              f"\n\tImages used: {len(image_names_dict.values()) + len(image_names_dict.keys())} "
+              f"left: {user.requests_left}"
+              f"\n\tMessages: [{messages}]"
+              f"\n\tImages: [{image_names}]")
+    else:
+        print(f"User: {user.username}, Messages: [{messages}], Images: []")
 
 
 async def fetch_all_user_ids():
@@ -219,33 +223,37 @@ async def fetch_all_users_data():
         await fetch_user_data(user_id)
 
 
-'''
-async def test_main():
+async def example_usage():
+    class UserI:
+        def __init__(self, id_, username=None, first_name=None, last_name=None):
+            self.id = id_
+            self.username = username
+            self.first_name = first_name
+            self.last_name = last_name
+
+    class MessageI:
+        def __init__(self, user_id, from_user=None):
+            self.user_id = user_id
+            self.from_user = from_user
+
+    from_user_info = UserI(id_=12345, username='testuser1', first_name='Test1', last_name='User1')
+    message = MessageI(user_id=12345, from_user=from_user_info)
+
     await initialize_database()
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
-    await insert_user(user_id=12345, username='testuser1', first_name='Test1', last_name='User1', mode=1)
-    await insert_message(user_id=12345, text_data='Hello, World 1!')
-    await create_image_entry(user_id=12345, input_image_name='input1.jpg',
-                             output_image_names='output1_1.jpg,output1_2.jpg')
+    await insert_user(12345, 'user1', 'User', 'One', mode=1)
+    await insert_user(67890, 'user2', 'User', 'Two', mode=2)
+    await insert_user(54321, 'user3', 'User', 'Three', mode=1)
+    await log_input_image_data(message, "input1.jpg")
+    await log_input_image_data(message, "input2.jpg")
+    await update_user_mode(12345, mode=3)
 
-    await insert_user(user_id=67890, username='testuser2', first_name='Test2', last_name='User2', mode=2)
-    await insert_message(user_id=67890, text_data='Hello, World 2!')
-    await update_image_entry(user_id=67890, input_image_name='input2.jpg',
-                             output_image_names='output2_1.jpg,output2_2.jpg')
-
-    await fetch_user_data(12345)
-    await fetch_user_data(67890)
-    await update_user_mode(12345, 3)
-
-    await insert_user(user_id=54321, username='testuser3', first_name='Test3', last_name='User3', mode=1)
-    await insert_message(user_id=54321, text_data='Hello, World 3!')
-    await update_image_entry(user_id=54321, input_image_name='input3.jpg',
-                             output_image_names='output3_1.jpg,output3_2.jpg')
-    # Fetch and print all data again to see the changes
+    # Fetch and print user data
     await fetch_user_data(12345)
     await fetch_user_data(67890)
     await fetch_user_data(54321)
+    await fetch_all_users_data()
 
-# if __name__ == "__main__":
-#    asyncio.run(test_main())
-'''
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(example_usage())
