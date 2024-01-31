@@ -5,9 +5,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-
 DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
+#  logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+#  logging.getLogger('sqlite').setLevel(logging.ERROR)
+
 
 Base = declarative_base()
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
@@ -204,6 +206,20 @@ async def fetch_user_data(user_id):
             print("User not found")
 
 
+async def fetch_all_user_ids():
+    async with AsyncSession(async_engine) as session:
+        result = await session.execute(select(User.user_id))
+        user_ids = result.scalars().all()
+        return user_ids
+
+
+async def fetch_all_users_data():
+    all_user_ids = await fetch_all_user_ids()
+    for user_id in all_user_ids:
+        await fetch_user_data(user_id)
+
+
+'''
 async def test_main():
     await initialize_database()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.WARN)
@@ -232,3 +248,4 @@ async def test_main():
 
 # if __name__ == "__main__":
 #    asyncio.run(test_main())
+'''

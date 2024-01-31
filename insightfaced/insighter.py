@@ -15,7 +15,12 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-mona_lisa = 'ken.png'
+targets_list = {'1': 'mona_lisa.png',
+                '2': 'Emperor-of-Mankind.jpg',
+                '3': 'anime.png',
+                '4': 'cyber.png',
+                '5': 'ken.png'}
+loaded_targets = {num: cv2.imread(name) for num, name in targets_list.items()}
 
 
 def get_swapp():
@@ -34,10 +39,11 @@ def load_face(swapp, img_path):
     return faces
 
 
-async def swap_faces(source_path, target_path=mona_lisa):
+async def swap_faces(source_path, mode='1'):
+    target_path = targets_list[mode]
     source_faces = load_face(SWAPP, source_path)
     target_face = load_face(SWAPP, target_path)[0]
-    result_img = target_img.copy()
+    result_img = loaded_targets[mode].copy()
     result_faces = []
     try:
         for num, face in enumerate(source_faces):
@@ -65,8 +71,8 @@ async def get_no_face(original_image_path):
     return white_canvas
 
 
-async def get_face(temp_file):
-    imgs = await swap_faces(temp_file, target_path=mona_lisa)
+async def get_face(temp_file, mode):
+    imgs = await swap_faces(temp_file, mode=mode)
     saved_files = []
     if imgs is None or len(imgs) == 0:
         imgs = [await get_no_face(temp_file)]
@@ -80,8 +86,8 @@ async def get_face(temp_file):
 
 
 @app.post('/insighter')
-async def extract_face(file_path: str = Form(...)):
-    saved_faces = await get_face(file_path)
+async def extract_face(file_path: str = Form(...), mode: str = Form(...)):
+    saved_faces = await get_face(file_path, mode)
     return saved_faces
 
 
@@ -89,6 +95,5 @@ def get_n_name(name, n):
     return f'{name[:-4]}_{n}.png'
 
 
-target_img = cv2.imread(mona_lisa)  # upload once
 SWAPP = get_swapp()
 SWAPPER = get_swapper()
