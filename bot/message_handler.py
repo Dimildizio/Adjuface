@@ -9,10 +9,11 @@ from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from PIL import Image
-from bot.db_requests import fetch_user_mode, update_user_mode, log_input_image_data, exist_user_check, \
-                            log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data
+from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
+                            log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
+                            decrement_requests_left, buy_premium
 
-
+MAXIMGS = 10
 buttonname1 = 'Peter the Great'
 buttonname2 = 'Catherine the Great'
 
@@ -78,8 +79,11 @@ async def handle_help(message):
     help_message = (
         "This bot can only process photos that have people on it. Here are the available commands:\n"
         "/start - Start the bot\n"
-        "/pictures - Select a target picture\n"
         "/help - Display this help message\n"
+        "/status - Check your account limits\n"
+        "/pictures - Select a target picture\n"
+        "/reset_limit - Reset your image limit to 10\n"
+        "/buy_premium - Add 100 images and set account to premium\n"
         "/contacts - Show contacts list\n"
         "/support - Send a support request\n"
         "Send me a photo, and I'll process it!")
@@ -91,13 +95,24 @@ async def save_img(img, img_path):
     orig.save(img_path, format='PNG')
 
 
+async def check_limit(user, message):
+    if user.requests_left < MAXIMGS:
+        await message.answer("Sorry, you are out of attempts. Try again later")
+        return False
+    return True
+
+
 async def handle_image(message: Message, token):
+
+    user = await fetch_user_data(message.from_user.id)
+    if not (await check_limit(user, message)):
+        return
     face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     input_path = generate_filename()
     await log_input_image_data(message, input_path)
-    user_mode = await fetch_user_mode(message.from_user.id)
+    user_mode = user.mode
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -123,9 +138,16 @@ async def handle_image(message: Message, token):
                     await log_output_image_data(message, input_path, image_paths)   # logging to db
 
                     for output_path in image_paths:
+                        user = await fetch_user_data(message.from_user.id)
+                        if not (await check_limit(user, message)):
+                            return
                         inp_file = FSInputFile(output_path)
                         await message.answer_photo(photo=inp_file)
                         print('Image sent')
+
+                    await decrement_requests_left(user.user_id, n=len(image_paths))
+                    limit = max(0, user.requests_left - len(image_paths))
+                    await message.answer(f'You have {limit} attempts left')
 
                 else:
                     error_message = await response.text()
@@ -167,22 +189,43 @@ async def handle_source_command(message: Message):
     button_11 = InlineKeyboardButton(text=buttonname11, callback_data='11')
     button_12 = InlineKeyboardButton(text=buttonname12, callback_data='12')
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2],[button_3, button_4],
-                                                     [button_5, button_6],[button_7, button_8],
-                                                     [button_9, button_10],[button_11, button_12]])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2], [button_3, button_4],
+                                                     [button_5, button_6], [button_7, button_8],
+                                                     [button_9, button_10], [button_11, button_12]])
     await message.answer("Choose your target image:", reply_markup=keyboard)
 
 
 async def button_callback_handler(query: CallbackQuery):
     user_id = query.from_user.id
     await update_user_mode(user_id, query.data)
-    await query.message.answer(f"Target image is {buttons[int(query.data)]}\nSend me a photo, and I'll process it!")
+    await query.message.answer(f"Target image is {buttons[int(query.data)-1]}\nSend me a photo, and I'll process it!")
     await fetch_user_data(user_id)
     await query.answer()
 
 
-async def show_target_pictures(*args):
-    pass
+async def show_target_pictures(message):
+    await message.answer("Function not implemented yet")
+
+
+async def set_user_to_premium(message):
+    await buy_premium(message.from_user.id)
+    new_number = await fetch_user_data(message.from_user.id)
+    await message.answer(f'Congratulations! You got premium status!'
+                         f'\nYou have {new_number.requests_left} attempts left')
+
+
+async def reset_images_left(message):
+    n = 10
+    await set_requests_left(message.from_user.id, n)
+    new_number = await fetch_user_data(message.from_user.id)
+    await message.answer(f'You have {new_number.requests_left} attempts left')
+
+
+async def check_status(message):
+    user = await fetch_user_data(message.from_user.id)
+    await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts left')
+
+
 
 def setup_handlers(dp, bot_token):
     dp.message(Command('start'))(handle_start)
@@ -192,6 +235,9 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('pictures'))(handle_source_command)
     dp.message(Command('targets'))(show_target_pictures)
+    dp.message(Command('buy_premium'))(set_user_to_premium)
+    dp.message(Command('reset_limit'))(reset_images_left)
+    dp.message(Command('status'))(check_status)
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):

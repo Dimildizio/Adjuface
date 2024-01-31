@@ -94,6 +94,42 @@ async def fetch_user_mode(user_id):
         return user_mode
 
 
+async def decrement_requests_left(user_id, n = 1):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                if user.requests_left > 0:
+                    n = user.requests_left - n
+                    user.requests_left = max(0, n)
+                else:
+                    user.status = 'free'
+                    user.requests_left = 0
+            await session.commit()
+
+
+async def set_requests_left(user_id, number=10):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                user.requests_left = number
+            await session.commit()
+
+
+async def buy_premium(user_id):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                user.requests_left += 100
+                user.status = "premium"
+            await session.commit()
+
+
 async def insert_message(user_id, text_data):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
@@ -188,8 +224,10 @@ async def fetch_user_data(user_id):
         if user:
             messages = ', '.join([message.text_data for message in user.messages])
             await format_userdata_output(user, messages)
+            return user
         else:
             print("User not found")
+            return None
 
 
 async def format_userdata_output(user, messages):
@@ -208,6 +246,13 @@ async def format_userdata_output(user, messages):
               f"\n\tImages: [{image_names}]")
     else:
         print(f"User: {user.username}, Messages: [{messages}], Images: []")
+
+
+async def return_user(user):
+
+    return {'user_id': user.user_id, 'username': user.username, 'first_name': user.first_name,
+            'last_name': user.last_name, 'mode': user.mode, 'status': user.status,
+            'requests_left': user.requests_left}
 
 
 async def fetch_all_user_ids():
