@@ -7,9 +7,9 @@ import yaml
 
 from aiogram import F
 from aiogram.filters.command import Command
-from aiogram.types import FSInputFile, Message
+from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from PIL import Image
-from bot.db_requests import log_input_image_data, log_output_image_data, log_text_data, fetch_user_data
+from bot.db_requests import log_input_image_data, log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data
 
 
 def get_contacts():
@@ -84,7 +84,7 @@ async def handle_image(message: Message, token):
                     await message.answer('Failed to download image. Please try again')
                     return
 
-            async with session.post(face_extraction_url, data={'file_path': input_path}) as response:
+            async with session.post(face_extraction_url, data={'file_path': input_path, 'mode': '1'}) as response:
                 print('Sending image path through fastapi')
 
                 if response.status == 200:
@@ -118,14 +118,36 @@ async def handle_text(message: Message):
     await fetch_user_data(message.from_user.id)
     await message.answer(response_text)
 
+async def print_all_users_to_console(message: Message):
+    await fetch_all_users_data()
+
+
+
+
+async def handle_source_command(message: Message):
+    button_1 = InlineKeyboardButton(text='Mona',callback_data='mona')
+    button_2 = InlineKeyboardButton(text='Not Mona',callback_data='notmona')
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2]])
+    await message.answer("Choose your target image:", reply_markup=keyboard)
+
+
+async def button_callback_handler(query: CallbackQuery):
+    await query.message.answer(query.data)
+    await query.answer()
+
 
 def setup_handlers(dp, bot_token):
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
+    dp.message(Command('show_users'))(print_all_users_to_console)
+    dp.message(Command('source'))(handle_source_command)
+    dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):
         await handle_image(message, bot_token)
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
+
