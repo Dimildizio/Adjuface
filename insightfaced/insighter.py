@@ -15,11 +15,19 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-targets_list = {'1': 'mona_lisa.png',
-                '2': 'Emperor-of-Mankind.jpg',
-                '3': 'anime.png',
-                '4': 'cyber.png',
-                '5': 'ken.png'}
+
+targets_list = {'1': 'peter.png',
+                '2': 'kate.png',
+                '3': 'mona_lisa.png',
+                '4': 'stroganoff.png',
+                '5': 'Emperor-of-Mankind.jpg',
+                '6': 'sororitas.png',
+                '7': 'cyber.png',
+                '8': 'cybergirl.png',
+                '9': 'anime.png',
+                '10': 'anime_girl.png',
+                '11': 'ken.png',
+                '12': 'barbie.png'}
 loaded_targets = {num: cv2.imread(name) for num, name in targets_list.items()}
 
 
@@ -93,6 +101,7 @@ async def extract_face(file_path: str = Form(...), mode: str = Form(...)):
 
 def get_n_name(name, n):
     return f'{name[:-4]}_{n}.png'
+
 
 
 SWAPP = get_swapp()

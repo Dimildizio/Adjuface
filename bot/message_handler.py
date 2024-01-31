@@ -13,6 +13,29 @@ from bot.db_requests import fetch_user_mode, update_user_mode, log_input_image_d
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data
 
 
+buttonname1 = 'Peter the Great'
+buttonname2 = 'Catherine the Great'
+
+buttonname3 = 'Mona Lisa'
+buttonname4 = 'Count Stroganoff'
+
+buttonname5 = 'Emperor of Mankind'
+buttonname6 = 'Adeptus Sororitas'
+
+buttonname7 = 'Cyberboy'
+buttonname8 = 'Cybergirl'
+
+
+buttonname9 = 'Anime boy'
+buttonname10 = 'Anime girl'
+
+buttonname11 = 'Ken'
+buttonname12 = 'Barbie'
+buttons = [buttonname1, buttonname2, buttonname3, buttonname4,
+           buttonname5, buttonname6, buttonname7, buttonname8,
+           buttonname9, buttonname10, buttonname11, buttonname12]
+
+
 def get_contacts():
     with open('bot/contacts.yaml', 'r') as f:
         config = yaml.safe_load(f)
@@ -33,6 +56,7 @@ def get_n_name(name, n):
 async def handle_start(message):
     await exist_user_check(message)
     await message.answer("Welcome! Send me a photo of a person and I will return their face.")
+    await handle_source_command(message)
 
 
 async def handle_support(message):
@@ -54,9 +78,10 @@ async def handle_help(message):
     help_message = (
         "This bot can only process photos that have people on it. Here are the available commands:\n"
         "/start - Start the bot\n"
+        "/pictures - Select a target picture\n"
         "/help - Display this help message\n"
         "/contacts - Show contacts list\n"
-        "/support - send a support request\n"
+        "/support - Send a support request\n"
         "Send me a photo, and I'll process it!")
     await message.answer(help_message)
 
@@ -129,21 +154,35 @@ async def output_all_users_to_console(*args):
 
 
 async def handle_source_command(message: Message):
-    button_1 = InlineKeyboardButton(text='Mona', callback_data='mona')
-    button_2 = InlineKeyboardButton(text='Not Mona', callback_data='notmona')
+    button_1 = InlineKeyboardButton(text=buttonname1, callback_data='1')
+    button_2 = InlineKeyboardButton(text=buttonname2, callback_data='2')
+    button_3 = InlineKeyboardButton(text=buttonname3, callback_data='3')
+    button_4 = InlineKeyboardButton(text=buttonname4, callback_data='4')
+    button_5 = InlineKeyboardButton(text=buttonname5, callback_data='5')
+    button_6 = InlineKeyboardButton(text=buttonname6, callback_data='6')
+    button_7 = InlineKeyboardButton(text=buttonname7, callback_data='7')
+    button_8 = InlineKeyboardButton(text=buttonname8, callback_data='8')
+    button_9 = InlineKeyboardButton(text=buttonname9, callback_data='9')
+    button_10 = InlineKeyboardButton(text=buttonname10, callback_data='10')
+    button_11 = InlineKeyboardButton(text=buttonname11, callback_data='11')
+    button_12 = InlineKeyboardButton(text=buttonname12, callback_data='12')
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2]])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2],[button_3, button_4],
+                                                     [button_5, button_6],[button_7, button_8],
+                                                     [button_9, button_10],[button_11, button_12]])
     await message.answer("Choose your target image:", reply_markup=keyboard)
 
 
 async def button_callback_handler(query: CallbackQuery):
     user_id = query.from_user.id
-    new_mode = 1 if query.data == 'mona' else 2
-    await update_user_mode(user_id, new_mode)
-    await query.message.answer(f"Mode updated to {query.data}")
+    await update_user_mode(user_id, query.data)
+    await query.message.answer(f"Target image is {buttons[int(query.data)]}\nSend me a photo, and I'll process it!")
     await fetch_user_data(user_id)
     await query.answer()
 
+
+async def show_target_pictures(*args):
+    pass
 
 def setup_handlers(dp, bot_token):
     dp.message(Command('start'))(handle_start)
@@ -151,7 +190,8 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
     dp.message(Command('show_users'))(output_all_users_to_console)
-    dp.message(Command('source'))(handle_source_command)
+    dp.message(Command('pictures'))(handle_source_command)
+    dp.message(Command('targets'))(show_target_pictures)
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):
