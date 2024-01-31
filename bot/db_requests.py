@@ -3,13 +3,12 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-
+from datetime import datetime
 DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
 # import logging
 # logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
 # logging.getLogger('sqlite').setLevel(logging.ERROR)
-
 
 Base = declarative_base()
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
@@ -25,7 +24,8 @@ class User(Base):
     last_name = Column(String)
     mode = Column(Integer, default=1)
     status = Column(String, default='free')
-    requests_left = Column(Integer, default=100)
+    requests_left = Column(Integer, default=10)
+    last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
 
     messages = relationship("Message", back_populates="user")
     image_names = relationship("ImageName", back_populates="user")
@@ -94,7 +94,7 @@ async def fetch_user_mode(user_id):
         return user_mode
 
 
-async def decrement_requests_left(user_id, n = 1):
+async def decrement_requests_left(user_id, n=1):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
             user = await session.execute(select(User).filter_by(user_id=user_id))
@@ -266,6 +266,16 @@ async def fetch_all_users_data():
     all_user_ids = await fetch_all_user_ids()
     for user_id in all_user_ids:
         await fetch_user_data(user_id)
+
+
+async def update_photo_timestamp(user_id, timestamp):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                user.last_photo_sent_timestamp = timestamp
+            await session.commit()
 
 
 async def example_usage():

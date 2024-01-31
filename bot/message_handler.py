@@ -5,13 +5,14 @@ import random
 import os
 import yaml
 
+from datetime import datetime, timedelta
 from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
-                            decrement_requests_left, buy_premium
+                            decrement_requests_left, buy_premium, update_photo_timestamp
 
 MAXIMGS = 10
 buttonname1 = 'Peter the Great'
@@ -102,11 +103,20 @@ async def check_limit(user, message):
     return True
 
 
-async def handle_image(message: Message, token):
+async def check_time_limit(user, message):
+    if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=20):
+        secs = (datetime.now() - user.last_photo_sent_timestamp).total_seconds()
+        text = f"Sorry, too many requests. Please wait {int(secs)} more seconds"
+        await message.answer(text)
+        return False
+    return True
 
+
+async def handle_image(message: Message, token):
     user = await fetch_user_data(message.from_user.id)
-    if not (await check_limit(user, message)):
+    if not (await check_limit(user, message) and await check_time_limit(user, message)):
         return
+    await update_photo_timestamp(user.user_id, datetime.now())
     face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
@@ -224,7 +234,6 @@ async def reset_images_left(message):
 async def check_status(message):
     user = await fetch_user_data(message.from_user.id)
     await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts left')
-
 
 
 def setup_handlers(dp, bot_token):
