@@ -21,9 +21,20 @@ async def init_database():
     await initialize_database()
 
 
+def list_all_loggers():
+    #logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.ERROR)
+    root_logger = logging.getLogger('')
+    loggers = [root_logger] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]# if 'sqlalchemy' in name]
+    logger_info = {}
+    for logger in loggers:
+        if 'sqlalchemy' in logger.name:
+            logger.setLevel(logging.ERROR)
+        logger_info[logger.name] = logger.getEffectiveLevel()
+    return logger_info
+
+
 if __name__ == '__main__':
-    logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.WARN)
+    print(list_all_loggers())
     ibot = Bot(token=get_token())
     dispatcher = Dispatcher()
     asyncio.run(init_database())
