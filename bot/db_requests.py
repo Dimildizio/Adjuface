@@ -194,7 +194,8 @@ async def exist_user_check(message):
 async def log_text_data(message):
     print('LOG_TEXT_DATA')
     await exist_user_check(message)
-    await insert_message(message.from_user.id, message.text)
+    text = message.text.replace(' ', '_')
+    await insert_message(message.from_user.id, text)
 
 
 # exist_user_check - wrappers don't want to async work

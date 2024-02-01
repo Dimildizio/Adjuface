@@ -111,18 +111,27 @@ async def check_limit(user, message):
     return True
 
 
-async def check_time_limit(user, message):
+async def check_time_limit(user, message, n_time = 20):
     if user.status == 'premium':
         return True
-    if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=20):
+    if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=n_time):
         secs = (datetime.now() - user.last_photo_sent_timestamp).total_seconds()
-        text = f"Sorry, too many requests. Please wait {20-int(secs)} more seconds"
+        text = f"Sorry, too many requests. Please wait {n_time-int(secs)} more seconds"
         await message.answer(text)
         return False
     return True
 
 
+
+async def show_target_pictures(message):
+    output_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images\\collage.png'
+    inp_file = FSInputFile(output_path)
+    await message.answer_photo(photo=inp_file)
+
+
+
 async def handle_image(message: Message, token):
+    await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
     if not (await check_limit(user, message) and await check_time_limit(user, message)):
         return
@@ -139,6 +148,7 @@ async def handle_image(message: Message, token):
             async with session.get(file_url) as response:
                 if response.status == 200:
                     print('Image downloaded')
+                    await message.answer('Image received. Processing...')
                     content = await response.read()
                     await save_img(content, input_path)
                 else:
@@ -181,6 +191,7 @@ async def handle_image(message: Message, token):
 
 
 async def handle_text(message: Message):
+    await exist_user_check(message)
     print("LOGGING TEXT")
     await log_text_data(message)
     response_text = (
@@ -213,6 +224,7 @@ async def handle_source_command(message: Message):
                                                      [button_5, button_6], [button_7, button_8],
                                                      [button_9, button_10], [button_11, button_12]])
     await message.answer("Choose your target image:", reply_markup=keyboard)
+    await show_target_pictures(message)
 
 
 async def button_callback_handler(query: CallbackQuery):
@@ -223,11 +235,8 @@ async def button_callback_handler(query: CallbackQuery):
     await query.answer()
 
 
-async def show_target_pictures(message):
-    await message.answer("Function not implemented yet")
-
-
 async def set_user_to_premium(message):
+    await exist_user_check(message)
     await buy_premium(message.from_user.id)
     new_number = await fetch_user_data(message.from_user.id)
     await message.answer(f'Congratulations! You got premium status!'
@@ -242,6 +251,7 @@ async def reset_images_left(message):
 
 
 async def check_status(message):
+    await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
     await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts left')
 

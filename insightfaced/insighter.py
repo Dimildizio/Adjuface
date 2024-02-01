@@ -7,7 +7,6 @@ from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
 
-
 WATERMARK = '@dimildiziotrybot'
 app = FastAPI()
 app.add_middleware(CORSMiddleware,
@@ -16,19 +15,21 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-
-targets_list = {'1': 'peter.png',
-                '2': 'kate.png',
-                '3': 'mona_lisa.png',
-                '4': 'stroganoff.png',
-                '5': 'Emperor-of-Mankind.jpg',
-                '6': 'sororitas.png',
-                '7': 'cyber.png',
-                '8': 'cybergirl.png',
-                '9': 'anime.png',
-                '10': 'anime_girl.png',
-                '11': 'ken.png',
-                '12': 'barbie.png'}
+# TODO: Currently the access to target images is done this way, however, after using DOcker it will not be an option
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+get_targets = lambda name: ROOTDIR + '\\target_images\\'+ name
+targets_list = {'1': get_targets('peter.png'),
+                '2': get_targets('kate.png'),
+                '3': get_targets('mona_lisa.png'),
+                '4': get_targets('stroganoff.png'),
+                '5': get_targets('Emperor-of-Mankind.jpg'),
+                '6': get_targets('sororitas.png'),
+                '7': get_targets('cyber.png'),
+                '8': get_targets('cybergirl.png'),
+                '9': get_targets('anime.png'),
+                '10': get_targets('anime_girl.png'),
+                '11': get_targets('ken.png'),
+                '12': get_targets('barbie.png')}
 loaded_targets = {num: cv2.imread(name) for num, name in targets_list.items()}
 
 
@@ -101,7 +102,7 @@ async def get_face(temp_file, mode):
         imgs = [await get_no_face(temp_file)]
     for i, img in enumerate(imgs):
         name = get_n_name(temp_file, i)
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/temp/result'
+        root_dir = ROOTDIR+'/temp/result'
         name = os.path.join(root_dir, os.path.basename(name))
         img.save(name, format='PNG')
         saved_files.append(name)
