@@ -111,7 +111,7 @@ async def check_limit(user, message):
     return True
 
 
-async def check_time_limit(user, message, n_time = 20):
+async def check_time_limit(user, message, n_time=20):
     if user.status == 'premium':
         return True
     if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=n_time):
@@ -122,12 +122,10 @@ async def check_time_limit(user, message, n_time = 20):
     return True
 
 
-
 async def show_target_pictures(message):
     output_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images\\collage.png'
     inp_file = FSInputFile(output_path)
     await message.answer_photo(photo=inp_file)
-
 
 
 async def handle_image(message: Message, token):
@@ -192,14 +190,17 @@ async def handle_image(message: Message, token):
 
 async def handle_text(message: Message):
     await exist_user_check(message)
-    print("LOGGING TEXT")
     await log_text_data(message)
     response_text = (
         "I'm currently set up to process photos only. "
         "Please send me a photo of a person, and I will return their face.")
-    print('GETTING USER DATA')
     await fetch_user_data(message.from_user.id)
     await message.answer(response_text)
+
+
+async def handle_unsupported_content(message: Message):
+    await message.answer("Sorry, I can't handle this type of content.\n"
+                         "Please send me a photo from your gallery, and I will return the face of a person on it.")
 
 
 async def output_all_users_to_console(*args):
@@ -274,3 +275,5 @@ def setup_handlers(dp, bot_token):
         await handle_image(message, bot_token)
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
+    dp.message(F.sticker | F.video | F.document | F.location | F.poll | F.audio | F.voice | F.contact | F.video_note)(
+               handle_unsupported_content)
