@@ -14,7 +14,6 @@ from bot.db_requests import set_requests_left, update_user_mode, log_input_image
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp
 
-MAXIMGS = 10
 buttonname1 = 'Peter the Great'
 buttonname2 = 'Catherine the Great'
 
@@ -36,6 +35,9 @@ buttonname12 = 'Barbie'
 buttons = [buttonname1, buttonname2, buttonname3, buttonname4,
            buttonname5, buttonname6, buttonname7, buttonname8,
            buttonname9, buttonname10, buttonname11, buttonname12]
+
+DELAY_BETWEEN_IMAGES = 2
+SENT_TIME = {}
 
 
 def get_contacts():
@@ -121,6 +123,21 @@ async def check_time_limit(user, message, n_time=20):
         return False
     return True
 
+async def prevent_multisending(message):
+    dt = datetime.now()
+    last_sent = SENT_TIME.get(message.from_user.id, None)
+    timer = (dt-last_sent) if last_sent else 'new_user'
+    print("\n\n\n\t\t\tTIME DIFFERENCE", timer,'\n\n\n\n')
+    if message.media_group_id is None and (last_sent is None or (
+            dt - last_sent).total_seconds() >= DELAY_BETWEEN_IMAGES):
+        print('ALL OK')
+        SENT_TIME[message.from_user.id] = dt
+        return True
+    print('grouping', message.media_group_id is None)
+    print('last_sent', last_sent)
+    if last_sent:
+        print('time difference', (dt - last_sent).total_seconds(), 'is >', DELAY_BETWEEN_IMAGES)
+    return False
 
 async def show_target_pictures(message):
     output_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images\\collage.png'
@@ -272,7 +289,11 @@ def setup_handlers(dp, bot_token):
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):
-        await handle_image(message, bot_token)
+        if await prevent_multisending(message):
+            await handle_image(message, bot_token)
+            return
+        await message.answer("Please send one photo at a time.")
+
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
     dp.message(F.sticker | F.video | F.document | F.location | F.poll | F.audio | F.voice | F.contact | F.video_note)(
