@@ -8,6 +8,7 @@ from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
 
 
+WATERMARK = '@dimildiziotrybot'
 app = FastAPI()
 app.add_middleware(CORSMiddleware,
                    allow_origins=["*"],  # Allows all origins
@@ -47,6 +48,19 @@ def load_face(swapp, img_path):
     return faces
 
 
+async def add_watermark_cv(image, watermark_text=WATERMARK):
+    font = cv2.FONT_HERSHEY_PLAIN
+    font_scale = 1
+    color = (255, 255, 255)
+    thickness = 1
+    text_size = cv2.getTextSize(watermark_text, font, font_scale, thickness)[0]
+    padding = 2
+    position = (padding, image.shape[0] - padding - text_size[1])
+    shadow_position = (position[0] + 1, position[1] + 1)
+    cv2.putText(image, watermark_text, shadow_position, font, font_scale, (0, 0, 0), thickness)
+    cv2.putText(image, watermark_text, position, font, font_scale, color, thickness)
+
+
 async def swap_faces(source_path, mode='1'):
     target_path = targets_list[mode]
     source_faces = load_face(SWAPP, source_path)
@@ -56,6 +70,7 @@ async def swap_faces(source_path, mode='1'):
     try:
         for num, face in enumerate(source_faces):
             result_img = SWAPPER.get(result_img, target_face, face, paste_back=True)
+            await add_watermark_cv(result_img)
             result_faces.append(Image.fromarray(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)))
     except Exception as e:
         print('EXCEPTION', e)
@@ -101,7 +116,6 @@ async def extract_face(file_path: str = Form(...), mode: str = Form(...)):
 
 def get_n_name(name, n):
     return f'{name[:-4]}_{n}.png'
-
 
 
 SWAPP = get_swapp()

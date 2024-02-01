@@ -76,6 +76,13 @@ async def handle_contacts(message):
     await message.answer(f"Reach me out through:\nTelegram: @{contacts['telegram']}\nGithub: {contacts['github']}\n")
 
 
+async def donate_link(message):
+    bthash = get_contacts()['cryptohash']
+    response_message = "Support me with BTC:"
+    await message.answer(response_message)
+    await message.answer(bthash)
+
+
 async def handle_help(message):
     help_message = (
         "This bot can only process photos that have people on it. Here are the available commands:\n"
@@ -87,6 +94,7 @@ async def handle_help(message):
         "/buy_premium - Add 100 images and set account to premium\n"
         "/contacts - Show contacts list\n"
         "/support - Send a support request\n"
+        "/donate - Support me\n"
         "Send me a photo, and I'll process it!")
     await message.answer(help_message)
 
@@ -97,16 +105,18 @@ async def save_img(img, img_path):
 
 
 async def check_limit(user, message):
-    if user.requests_left < MAXIMGS:
+    if user.requests_left <= 0:
         await message.answer("Sorry, you are out of attempts. Try again later")
         return False
     return True
 
 
 async def check_time_limit(user, message):
+    if user.status == 'premium':
+        return True
     if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=20):
         secs = (datetime.now() - user.last_photo_sent_timestamp).total_seconds()
-        text = f"Sorry, too many requests. Please wait {int(secs)} more seconds"
+        text = f"Sorry, too many requests. Please wait {20-int(secs)} more seconds"
         await message.answer(text)
         return False
     return True
@@ -247,6 +257,7 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('buy_premium'))(set_user_to_premium)
     dp.message(Command('reset_limit'))(reset_images_left)
     dp.message(Command('status'))(check_status)
+    dp.message(Command('donate'))(donate_link)
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):
