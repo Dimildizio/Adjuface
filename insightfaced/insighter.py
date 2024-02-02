@@ -1,5 +1,6 @@
 import cv2
 import os
+import json
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI,  Form
@@ -7,6 +8,9 @@ from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
 
+
+
+ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WATERMARK = '@dimildiziotrybot'
 app = FastAPI()
 app.add_middleware(CORSMiddleware,
@@ -15,22 +19,18 @@ app.add_middleware(CORSMiddleware,
                    allow_methods=["*"],  # Allows all methods
                    allow_headers=["*"],)  # Allows all headers
 
-# TODO: Currently the access to target images is done this way, however, after using DOcker it will not be an option
-ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-get_targets = lambda name: ROOTDIR + '\\temp\\target_images\\' + name
-targets_list = {'1': get_targets('peter.png'),
-                '2': get_targets('kate.png'),
-                '3': get_targets('mona_lisa.png'),
-                '4': get_targets('stroganoff.png'),
-                '5': get_targets('Emperor-of-Mankind.jpg'),
-                '6': get_targets('sororitas.png'),
-                '7': get_targets('cyber.png'),
-                '8': get_targets('cybergirl.png'),
-                '9': get_targets('anime.png'),
-                '10': get_targets('anime_girl.png'),
-                '11': get_targets('ken.png'),
-                '12': get_targets('barbie.png')}
-loaded_targets = {num: cv2.imread(name) for num, name in targets_list.items()}
+
+def load_target_names():
+    with open(ROOTDIR + '\\target_images.json', 'r') as file:
+        cats = json.load(file)
+    modes_n_paths = {}
+    for cat, items in cats['categories'].items():
+        for item in items:
+            modes_n_paths[item['mode']] = item['filepath']
+    return modes_n_paths
+
+targets_list = load_target_names()
+loaded_targets = {mode:cv2.imread(img_path) for mode, img_path in targets_list.items()}
 
 
 def get_swapp():
