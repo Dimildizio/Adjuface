@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+
+
 DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
 # import logging
@@ -23,6 +25,7 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     mode = Column(Integer, default=1)
+    receive_target_flag = Column(Integer, default=1)
     status = Column(String, default='free')
     requests_left = Column(Integer, default=10)
     last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
@@ -87,13 +90,6 @@ async def update_user_mode(user_id, mode):
             await session.commit()
 
 
-async def fetch_user_mode(user_id):
-    async with AsyncSession(async_engine) as session:
-        result = await session.execute(select(User.mode).where(User.user_id == user_id))
-        user_mode = result.scalar_one_or_none()
-        return user_mode
-
-
 async def decrement_requests_left(user_id, n=1):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
@@ -156,13 +152,13 @@ async def fetch_image_names_by_user_id(user_id):
         return image_name_dict
 
 
-async def create_image_entry(user_id, input_image_name, output_image_names=None):
+async def create_image_entry(user_id, input_image_name):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
             # Create a new entry
             new_entry = ImageName(user_id=user_id,
                                   input_image_name=input_image_name,
-                                  output_image_names=output_image_names)
+                                  output_image_names=None)
             session.add(new_entry)
             await session.commit()
 
@@ -239,7 +235,7 @@ async def format_userdata_output(user, messages):
                        f"{output_images})" for input_image, output_images in image_names_dict.items()]
         image_names = '\n\t\t\t'.join(image_names)
         print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
-              f"\n\tMode: {user.mode}"
+              f"\n\tMode: {user.mode} Custom target: {True if user.receive_target_flag else False}"
               f"\n\tStatus: {user.status}"
               f"\n\tImages used: {len(image_names_dict.values()) + len(image_names_dict.keys())} "
               f"left: {user.requests_left}"
@@ -250,7 +246,6 @@ async def format_userdata_output(user, messages):
 
 
 async def return_user(user):
-
     return {'user_id': user.user_id, 'username': user.username, 'first_name': user.first_name,
             'last_name': user.last_name, 'mode': user.mode, 'status': user.status,
             'requests_left': user.requests_left}
@@ -277,6 +272,31 @@ async def update_photo_timestamp(user_id, timestamp):
             if user:
                 user.last_photo_sent_timestamp = timestamp
             await session.commit()
+
+
+async def toggle_receive_target_flag(user_id, flag=0):
+    """
+    Switches states for target images to put faces onto. Available only for premium users.
+    :param user_id: user_id
+    :param flag: 2 flags
+    :return: flag
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+
+                user.receive_target_flag = flag
+                await session.commit()
+            #return user.receive_target_flag
+
+
+async def receive_user(user_id):
+    async with AsyncSession(async_engine) as session:
+        result = await session.execute(select(User).filter_by(user_id=user_id))
+        user = result.scalar_one_or_none()
+        return user
 
 
 async def example_usage():

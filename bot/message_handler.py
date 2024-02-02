@@ -12,7 +12,8 @@ from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyb
 from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
-                            decrement_requests_left, buy_premium, update_photo_timestamp
+                            decrement_requests_left, buy_premium, update_photo_timestamp, receive_user, \
+                            toggle_receive_target_flag
 
 buttonname1 = 'Peter the Great'
 buttonname2 = 'Catherine the Great'
@@ -40,20 +41,20 @@ DELAY_BETWEEN_IMAGES = 2
 SENT_TIME = {}
 
 
-def get_contacts():
+async def get_contacts():
     with open('bot/contacts.yaml', 'r') as f:
         config = yaml.safe_load(f)
     return config
 
 
-def generate_filename(folder='original'):
+async def generate_filename(folder='original'):
     while True:
-        filename = os.path.join('temp/'+folder, f'img_{random.randint(1, 999999)}.png')
+        filename = os.path.join('temp/'+folder, f'img_{random.randint(100, 999999)}.png')
         if not os.path.exists(filename):
             return os.path.join(os.getcwd(), filename)
 
 
-def get_n_name(name, n):
+async def get_n_name(name, n):
     return f'{name[:-4]}_{n}.png'
 
 
@@ -65,7 +66,8 @@ async def handle_start(message):
 
 async def handle_support(message):
     user = await user_contacts(message.from_user)
-    await message.bot.send_message(get_contacts()['my_id'], f'User: {user} requires help')
+    contact = await get_contacts()
+    await message.bot.send_message(contact['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
 
@@ -74,15 +76,15 @@ async def user_contacts(m):
 
 
 async def handle_contacts(message):
-    contacts = get_contacts()
+    contacts = await get_contacts()
     await message.answer(f"Reach me out through:\nTelegram: @{contacts['telegram']}\nGithub: {contacts['github']}\n")
 
 
 async def donate_link(message):
-    bthash = get_contacts()['cryptohash']
+    bthash = await get_contacts()
     response_message = "Support me with BTC:"
     await message.answer(response_message)
-    await message.answer(bthash)
+    await message.answer(bthash['cryptohash'])
 
 
 async def handle_help(message):
@@ -123,24 +125,19 @@ async def check_time_limit(user, message, n_time=20):
         return False
     return True
 
+
 async def prevent_multisending(message):
     dt = datetime.now()
     last_sent = SENT_TIME.get(message.from_user.id, None)
-    timer = (dt-last_sent) if last_sent else 'new_user'
-    print("\n\n\n\t\t\tTIME DIFFERENCE", timer,'\n\n\n\n')
     if message.media_group_id is None and (last_sent is None or (
             dt - last_sent).total_seconds() >= DELAY_BETWEEN_IMAGES):
-        print('ALL OK')
         SENT_TIME[message.from_user.id] = dt
         return True
-    print('grouping', message.media_group_id is None)
-    print('last_sent', last_sent)
-    if last_sent:
-        print('time difference', (dt - last_sent).total_seconds(), 'is >', DELAY_BETWEEN_IMAGES)
     return False
 
+
 async def show_target_pictures(message):
-    output_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images\\collage.png'
+    output_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\temp\\target_images\\collage.png'
     inp_file = FSInputFile(output_path)
     await message.answer_photo(photo=inp_file)
 
@@ -150,13 +147,14 @@ async def handle_image(message: Message, token):
     user = await fetch_user_data(message.from_user.id)
     if not (await check_limit(user, message) and await check_time_limit(user, message)):
         return
+
     await update_photo_timestamp(user.user_id, datetime.now())
+
     face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
-    input_path = generate_filename()
+    input_path = await generate_filename('target_images' if user.receive_target_flag else 'original')
     await log_input_image_data(message, input_path)
-    user_mode = user.mode
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -166,14 +164,19 @@ async def handle_image(message: Message, token):
                     await message.answer('Image received. Processing...')
                     content = await response.read()
                     await save_img(content, input_path)
+                    if await target_image_check(user, input_path):
+                        await message.answer('Target image uploaded, send your source image')
+                        return
                 else:
                     error_message = await response.text()
                     print(error_message)
                     await message.answer('Failed to download image. Please try again')
                     return
+
+
             async with session.post(face_extraction_url,
                                     data={'file_path': input_path,
-                                          'mode': user_mode}
+                                          'mode': user.mode}
                                     ) as response:
                 print('Sending image path through fastapi')
 
@@ -247,6 +250,7 @@ async def handle_source_command(message: Message):
 
 async def button_callback_handler(query: CallbackQuery):
     user_id = query.from_user.id
+    await toggle_receive_target_flag(user_id)
     await update_user_mode(user_id, query.data)
     await query.message.answer(f"Target image is {buttons[int(query.data)-1]}\nSend me a photo, and I'll process it!")
     await fetch_user_data(user_id)
@@ -262,6 +266,7 @@ async def set_user_to_premium(message):
 
 
 async def reset_images_left(message):
+    await exist_user_check(message)
     n = 10
     await set_requests_left(message.from_user.id, n)
     new_number = await fetch_user_data(message.from_user.id)
@@ -274,6 +279,27 @@ async def check_status(message):
     await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts left')
 
 
+
+
+async def target_image_check(user, input_image):
+    if user.status =='premium' and user.receive_target_flag:
+        await update_user_mode(user.user_id, input_image)
+        await toggle_receive_target_flag(user.user_id)
+        return input_image
+
+
+async def set_receive_flag(message):
+    await exist_user_check(message)
+    user = await receive_user(message.from_user.id)
+    if user.status == 'premium':
+        await toggle_receive_target_flag(message.from_user.id, 1)
+        await message.answer('Changing set to receiving a new target.\nSend target image.')
+        return
+
+    await message.answer('You need to be a premium user for that. Use /buy_premium function')
+
+
+
 def setup_handlers(dp, bot_token):
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
@@ -282,6 +308,7 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('pictures'))(handle_source_command)
     dp.message(Command('targets'))(show_target_pictures)
+    dp.message(Command('new_targets'))(set_receive_flag)
     dp.message(Command('buy_premium'))(set_user_to_premium)
     dp.message(Command('reset_limit'))(reset_images_left)
     dp.message(Command('status'))(check_status)

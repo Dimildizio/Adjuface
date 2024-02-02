@@ -17,7 +17,7 @@ app.add_middleware(CORSMiddleware,
 
 # TODO: Currently the access to target images is done this way, however, after using DOcker it will not be an option
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-get_targets = lambda name: ROOTDIR + '\\target_images\\'+ name
+get_targets = lambda name: ROOTDIR + '\\temp\\target_images\\' + name
 targets_list = {'1': get_targets('peter.png'),
                 '2': get_targets('kate.png'),
                 '3': get_targets('mona_lisa.png'),
@@ -43,7 +43,7 @@ def get_swapper():
     return get_model('inswapper_128.onnx', download=False)
 
 
-def load_face(swapp, img_path):
+async def load_face(swapp, img_path):
     read_img = cv2.imread(img_path)
     faces = swapp.get(read_img)
     return faces
@@ -62,15 +62,25 @@ async def add_watermark_cv(image, watermark_text=WATERMARK):
     cv2.putText(image, watermark_text, position, font, font_scale, color, thickness)
 
 
+async def select_target(mode):
+    if len(mode) < 4:
+        target_path = targets_list[mode]
+        result_img = loaded_targets[mode].copy()
+    else:
+        target_path = mode
+        result_img = cv2.imread(mode)
+    return target_path, result_img
+
+
 async def swap_faces(source_path, mode='1'):
-    target_path = targets_list[mode]
-    source_faces = load_face(SWAPP, source_path)
-    target_face = load_face(SWAPP, target_path)[0]
-    result_img = loaded_targets[mode].copy()
+    target_path, result_img = await select_target(mode)
+    source_faces = await load_face(SWAPP, source_path)
+    target_face = await load_face(SWAPP, target_path)
+
     result_faces = []
     try:
         for num, face in enumerate(source_faces):
-            result_img = SWAPPER.get(result_img, target_face, face, paste_back=True)
+            result_img = SWAPPER.get(result_img, target_face[0], face, paste_back=True)
             await add_watermark_cv(result_img)
             result_faces.append(Image.fromarray(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)))
     except Exception as e:
@@ -101,7 +111,7 @@ async def get_face(temp_file, mode):
     if imgs is None or len(imgs) == 0:
         imgs = [await get_no_face(temp_file)]
     for i, img in enumerate(imgs):
-        name = get_n_name(temp_file, i)
+        name = await get_n_name(temp_file, i)
         root_dir = ROOTDIR+'/temp/result'
         name = os.path.join(root_dir, os.path.basename(name))
         img.save(name, format='PNG')
@@ -115,7 +125,7 @@ async def extract_face(file_path: str = Form(...), mode: str = Form(...)):
     return saved_faces
 
 
-def get_n_name(name, n):
+async def get_n_name(name, n):
     return f'{name[:-4]}_{n}.png'
 
 
