@@ -23,7 +23,7 @@ def load_target_names():
 
 targets = load_target_names()
 preloaded_collages = {category: FSInputFile(collage_path) for category, collage_path in targets['collages'].items()}
-
+FACE_EXTRACTION_URL = 'http://localhost:8000/swapper'
 DELAY_BETWEEN_IMAGES = 2
 SENT_TIME = {}
 
@@ -124,7 +124,6 @@ async def handle_image(message: Message, token):
         return
     await update_photo_timestamp(user.user_id, datetime.now())
 
-    face_extraction_url = 'http://localhost:8000/insighter'
     file_path = await message.bot.get_file(message.photo[-1].file_id)
     file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
     input_path = await generate_filename('target_images' if user.receive_target_flag else 'original')
@@ -147,7 +146,7 @@ async def handle_image(message: Message, token):
                     await message.answer('Failed to download image. Please try again')
                     return
 
-            async with session.post(face_extraction_url,
+            async with session.post(FACE_EXTRACTION_URL,
                                     data={'file_path': input_path,
                                           'mode': user.mode}
                                     ) as response:

@@ -1,6 +1,0 @@
-torch
-tqdm
-ultralytics
-opencv-python
-pillow
-numpy
