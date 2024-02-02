@@ -33,7 +33,7 @@ buttonname10 = 'Anime girl'
 
 buttonname11 = 'Ken'
 buttonname12 = 'Barbie'
-buttons = [buttonname1, buttonname2, buttonname3, buttonname4,
+BUTTONS = [buttonname1, buttonname2, buttonname3, buttonname4,
            buttonname5, buttonname6, buttonname7, buttonname8,
            buttonname9, buttonname10, buttonname11, buttonname12]
 
@@ -94,8 +94,10 @@ async def handle_help(message):
         "/help - Display this help message\n"
         "/status - Check your account limits\n"
         "/pictures - Select a target picture\n"
+        "/categories - Select a category of pictures\n"
         "/reset_limit - Reset your image limit to 10\n"
         "/buy_premium - Add 100 images and set account to premium\n"
+        "/custom_target - Premium option to add your target image\n"  #TODO: set limits to 10
         "/contacts - Show contacts list\n"
         "/support - Send a support request\n"
         "/donate - Support me\n"
@@ -147,7 +149,6 @@ async def handle_image(message: Message, token):
     user = await fetch_user_data(message.from_user.id)
     if not (await check_limit(user, message) and await check_time_limit(user, message)):
         return
-
     await update_photo_timestamp(user.user_id, datetime.now())
 
     face_extraction_url = 'http://localhost:8000/insighter'
@@ -249,10 +250,13 @@ async def handle_source_command(message: Message):
 
 
 async def button_callback_handler(query: CallbackQuery):
+    data = query.data
     user_id = query.from_user.id
     await toggle_receive_target_flag(user_id)
-    await update_user_mode(user_id, query.data)
-    await query.message.answer(f"Target image is {buttons[int(query.data)-1]}\nSend me a photo, and I'll process it!")
+    if data.startswith('c'):
+        data = '3'
+    await update_user_mode(user_id, data)
+    await query.message.answer(f"Target image is {BUTTONS[int(data)-1]}\nSend me a photo, and I'll process it!")
     await fetch_user_data(user_id)
     await query.answer()
 
@@ -308,11 +312,12 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('pictures'))(handle_source_command)
     dp.message(Command('targets'))(show_target_pictures)
-    dp.message(Command('new_targets'))(set_receive_flag)
+    dp.message(Command('custom_target'))(set_receive_flag)
     dp.message(Command('buy_premium'))(set_user_to_premium)
     dp.message(Command('reset_limit'))(reset_images_left)
     dp.message(Command('status'))(check_status)
     dp.message(Command('donate'))(donate_link)
+    dp.message(Command('categories'))(handle_category_command)
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message):
@@ -325,3 +330,55 @@ def setup_handlers(dp, bot_token):
     dp.message(F.text)(handle_text)
     dp.message(F.sticker | F.video | F.document | F.location | F.poll | F.audio | F.voice | F.contact | F.video_note)(
                handle_unsupported_content)
+
+
+async def handle_category_command(message: Message):
+    button_1 = InlineKeyboardButton(text='Art', callback_data='c_art')
+    button_2 = InlineKeyboardButton(text='Warhammer', callback_data='c_warhammer')
+    button_3 = InlineKeyboardButton(text='Anime', callback_data='c_anime')
+    button_4 = InlineKeyboardButton(text='Cyberpunk', callback_data='c_cyberpunk')
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1, button_2], [button_3, button_4]])
+    await message.answer("Choose your target category:", reply_markup=keyboard)
+    await show_target_pictures(message)
+
+
+
+category_images = {
+    'art': [buttonname1, buttonname2, buttonname3,buttonname4],
+    'warhammer': [buttonname5, buttonname6],
+    'cyberpunk': [buttonname7, buttonname8],
+    'anime': [buttonname9, buttonname10],
+    'movies': [buttonname11, buttonname12]}
+
+
+async def button_callback_handler_testing(query: CallbackQuery):
+    data = query.data # TODO: data should be numbers here. and there should be a dict of imgs
+    print('QUERYAAAAAAAAAAAAAA', data)
+    user_id = query.from_user.id
+    if data.startswith('c_'):  # Check if the callback data starts with 'category_'
+        category = data.split('_')[1]
+        await show_images_for_category(query, category)
+    else:
+        await process_image_selection(query)
+    await query.answer()
+
+async def show_images_for_category(query: CallbackQuery, category: str):
+    buttons = [[InlineKeyboardButton(text=image, callback_data=f'image_{image}') for image in chunk]
+                for chunk in chunk_list(category_images[category], 2)]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await query.message.edit_text(f"Choose an image from {category.title()}:", reply_markup=keyboard)
+
+
+def chunk_list(data, size):
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+
+async def process_image_selection(query: CallbackQuery):
+    image_name = query.data.split('_')[1]
+    user_id = query.from_user.id
+    await toggle_receive_target_flag(user_id)
+    await update_user_mode(user_id, 1)
+    await query.message.answer(f"Target image is {image_name}\nSend me a photo, and I'll process it!")
+    await fetch_user_data(user_id)
