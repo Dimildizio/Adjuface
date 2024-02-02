@@ -74,9 +74,9 @@ async def handle_help(message):
         "/help - Display this help message\n"
         "/status - Check your account limits\n"
         "/select - Select a category of pictures\n"
-        "/reset_user - Reset your status and set image limit to 10\n"
+        "/reset_user - (Debug): Reset your status and set image limit to 10\n"
         "/buy_premium - Add 100 images and set account to premium\n"
-        "/custom_target - Premium option to add your target image\n"  # TODO: set limits to 10
+        "/custom_target - Premium option to add your target image\n"
         "/contacts - Show contacts list\n"
         "/support - Send a support request\n"
         "/donate - Support me\n"

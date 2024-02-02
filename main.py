@@ -2,8 +2,9 @@ import asyncio
 import logging
 import yaml
 from aiogram import Bot, Dispatcher
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.message_handler import setup_handlers
-from bot.db_requests import initialize_database
+from bot.db_requests import initialize_database, update_user_quotas
 
 
 async def main(dp, iobot):
@@ -35,7 +36,10 @@ def list_all_loggers():
 
 if __name__ == '__main__':
     print(list_all_loggers())
+    scheduler = AsyncIOScheduler()
     ibot = Bot(token=get_token())
     dispatcher = Dispatcher()
     asyncio.run(init_database())
+    scheduler.add_job(update_user_quotas, 'cron', hour=0, minute=0, second=0, timezone='UTC')
     asyncio.run(main(dispatcher, ibot))
+    scheduler.start()

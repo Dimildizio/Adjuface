@@ -28,6 +28,7 @@ class User(Base):
     receive_target_flag = Column(Integer, default=1)
     status = Column(String, default='free')
     requests_left = Column(Integer, default=10)
+    targets_left = Column(Integer, default=0)
     last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
 
     messages = relationship("Message", back_populates="user")
@@ -105,12 +106,26 @@ async def decrement_requests_left(user_id, n=1):
             await session.commit()
 
 
+async def decrement_targets_left(user_id, n=1):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                if user.targets_left > 0:
+                    n = user.targets_left - n
+                    user.targets_left = max(0, n)
+            await session.commit()
+
+
 async def set_requests_left(user_id, number=10):
     async with AsyncSession(async_engine) as session:
         async with session.begin():
             user = await session.execute(select(User).filter_by(user_id=user_id))
             user = user.scalar_one_or_none()
             if user:
+                user.status = 'free'
+                user.targets_left = 0
                 user.requests_left = number
             await session.commit()
 
@@ -122,6 +137,7 @@ async def buy_premium(user_id):
             user = user.scalar_one_or_none()
             if user:
                 user.requests_left += 100
+                user.targets_left += 10
                 user.status = "premium"
             await session.commit()
 
@@ -235,10 +251,11 @@ async def format_userdata_output(user, messages):
                        f"{output_images})" for input_image, output_images in image_names_dict.items()]
         image_names = '\n\t\t\t'.join(image_names)
         print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
-              f"\n\tMode: {user.mode} Custom target: {True if user.receive_target_flag else False}"
+              f"\n\tMode: {user.mode} Custom targets left: {True if user.receive_target_flag else False} "
+              f"- {user.targets_left}"
               f"\n\tStatus: {user.status}"
-              f"\n\tImages used: {len(image_names_dict.values()) + len(image_names_dict.keys())} "
-              f"left: {user.requests_left}"
+              f"\n\tImages total: {len(image_names_dict.values()) + len(image_names_dict.keys())}"
+              f" left: {user.requests_left}"
               f"\n\tMessages: [{messages}]"
               f"\n\tImages: [{image_names}]")
     else:
@@ -248,7 +265,7 @@ async def format_userdata_output(user, messages):
 async def return_user(user):
     return {'user_id': user.user_id, 'username': user.username, 'first_name': user.first_name,
             'last_name': user.last_name, 'mode': user.mode, 'status': user.status,
-            'requests_left': user.requests_left}
+            'requests_left': user.requests_left, 'targets_left': user.targets_left}
 
 
 async def fetch_all_user_ids():
@@ -297,6 +314,22 @@ async def receive_user(user_id):
         result = await session.execute(select(User).filter_by(user_id=user_id))
         user = result.scalar_one_or_none()
         return user
+
+
+async def update_user_quotas(free_requests=10, premium_requests=100, targets=10):
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            users = await session.execute(select(User))
+            users = users.scalars().all()
+            for user in users:
+                if user.status == 'free' and user.requests_left < free_requests:
+                    user.requests_left = free_requests
+                elif user.status == 'premium':
+                    if user.requests_left < premium_requests:
+                        user.requests_left = premium_requests
+                    if user.targets_left < targets:
+                        user.targets_left = targets
+            await session.commit()
 
 
 async def example_usage():
