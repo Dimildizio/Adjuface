@@ -13,7 +13,7 @@ from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp, receive_user, \
-                            toggle_receive_target_flag
+                            toggle_receive_target_flag, decrement_targets_left
 
 
 def load_target_names():
@@ -21,17 +21,20 @@ def load_target_names():
         return json.load(file)
 
 
+def get_contacts():
+    with open('bot/contacts.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    return config
+
+
 targets = load_target_names()
 preloaded_collages = {category: FSInputFile(collage_path) for category, collage_path in targets['collages'].items()}
 FACE_EXTRACTION_URL = 'http://localhost:8000/swapper'
 DELAY_BETWEEN_IMAGES = 2
 SENT_TIME = {}
+CONTACTS = get_contacts()
 
 
-async def get_contacts():
-    with open('bot/contacts.yaml', 'r') as f:
-        config = yaml.safe_load(f)
-    return config
 
 
 async def generate_filename(folder='original'):
@@ -50,21 +53,18 @@ async def handle_start(message):
 async def handle_support(message):
     user = f'ids:{message.id} @{message.username} {message.url}\n' \
            f'name: {message.first_name} {message.last_name} {message.full_name}'
-    contact = await get_contacts()
-    await message.bot.send_message(contact['my_id'], f'User: {user} requires help')
+    await message.bot.send_message(CONTACTS['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
 
 async def handle_contacts(message):
-    contacts = await get_contacts()
-    await message.answer(f"Reach me out through:\nTelegram: @{contacts['telegram']}\nGithub: {contacts['github']}\n")
+    await message.answer(f"Reach me out through:\nTelegram: @{CONTACTS['telegram']}\nGithub: {CONTACTS['github']}\n")
 
 
 async def donate_link(message):
-    bthash = await get_contacts()
     response_message = "Support me with BTC:"
     await message.answer(response_message)
-    await message.answer(bthash['cryptohash'])
+    await message.answer(CONTACTS['cryptohash'])
 
 
 async def handle_help(message):
@@ -74,7 +74,7 @@ async def handle_help(message):
         "/help - Display this help message\n"
         "/status - Check your account limits\n"
         "/select - Select a category of pictures\n"
-        "/reset_limit - Reset your image limit to 10\n"
+        "/reset_user - Reset your status and set image limit to 10\n"
         "/buy_premium - Add 100 images and set account to premium\n"
         "/custom_target - Premium option to add your target image\n"  # TODO: set limits to 10
         "/contacts - Show contacts list\n"
@@ -138,7 +138,9 @@ async def handle_image(message: Message, token):
                     content = await response.read()
                     await save_img(content, input_path)
                     if await target_image_check(user, input_path):
-                        await message.answer('Target image uploaded, send your source image')
+                        await message.answer(f'Target image uploaded. Uploads left: {user.targets_left}'
+                                             f'\nSend your source image')
+                        await decrement_targets_left(user.user_id)
                         return
                 else:
                     error_message = await response.text()
@@ -162,7 +164,7 @@ async def handle_image(message: Message, token):
                         if not (await check_limit(user, message)):
                             return
                         inp_file = FSInputFile(output_path)
-                        await message.answer_photo(photo=inp_file)
+                        await message.answer_photo(photo=inp_file, caption=f'Swap faces at @{CONTACTS["botname"]}')
                         print('Image sent')
 
                     await decrement_requests_left(user.user_id, n=len(image_paths))
@@ -202,9 +204,9 @@ async def output_all_users_to_console(*args):
 async def set_user_to_premium(message):
     await exist_user_check(message)
     await buy_premium(message.from_user.id)
-    new_number = await fetch_user_data(message.from_user.id)
+    user = await fetch_user_data(message.from_user.id)
     await message.answer(f'Congratulations! You got premium status!'
-                         f'\nYou have {new_number.requests_left} attempts left')
+                         f'\nYou have {user.requests_left} attempts left and {user.targets_left} custom target uploads')
 
 
 async def reset_images_left(message):
@@ -212,17 +214,18 @@ async def reset_images_left(message):
     n = 10
     await set_requests_left(message.from_user.id, n)
     new_number = await fetch_user_data(message.from_user.id)
-    await message.answer(f'You have {new_number.requests_left} attempts left')
+    await message.answer(f'You have {new_number.requests_left} attempts left' )
 
 
 async def check_status(message):
     await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
-    await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts left')
+    is_prem = 'left' if user.status == 'free' else f'with {user.targets_left} target uploads left'
+    await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts {is_prem}')
 
 
 async def target_image_check(user, input_image):
-    if user.status == 'premium' and user.receive_target_flag:
+    if user.status == 'premium' and user.receive_target_flag and user.targets_left:
         await update_user_mode(user.user_id, input_image)
         await toggle_receive_target_flag(user.user_id)
         return input_image
@@ -231,11 +234,11 @@ async def target_image_check(user, input_image):
 async def set_receive_flag(message):
     await exist_user_check(message)
     user = await receive_user(message.from_user.id)
-    if user.status == 'premium':
+    if user.status == 'premium' and user.targets_left > 0:
         await toggle_receive_target_flag(message.from_user.id, 1)
         await message.answer('Changing set to receiving a new target.\nSend target image.')
         return
-    await message.answer('You need to be a premium user for that. Use /buy_premium function')
+    await message.answer('You need to be a premium user with unspent uploads limit for that. Use /buy_premium function')
 
 
 async def handle_category_command(message: Message):
@@ -294,7 +297,7 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('custom_target'))(set_receive_flag)
     dp.message(Command('buy_premium'))(set_user_to_premium)
-    dp.message(Command('reset_limit'))(reset_images_left)
+    dp.message(Command('reset_user'))(reset_images_left)
     dp.message(Command('status'))(check_status)
     dp.message(Command('donate'))(donate_link)
     dp.message(Command('select'))(handle_category_command)
