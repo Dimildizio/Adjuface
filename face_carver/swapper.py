@@ -1,3 +1,48 @@
+"""
+This module `swapper.py` utilizes computer vision and face analysis technologies to swap faces in images.
+It leverages the FastAPI framework for serving a REST API, InsightFace for face detection and analysis,
+and OpenCV for image manipulation. The module supports swapping faces between a source image and predefined
+target images, adding watermarks to processed images, and handling requests with CORS policies for web
+integration.
+
+Features include:
+- Loading and processing images for face detection and swapping.
+- Dynamically selecting target images for face swapping based on user input.
+- Adding custom watermarks to images to indicate processing.
+- Serving a REST API endpoint for face swapping operations.
+- Utilizing InsightFace for advanced face analysis and detection.
+- Employing OpenCV for image reading, writing, and transformations.
+
+The FastAPI application is configured to handle cross-origin requests, allowing integration
+with front-end applications from different origins. The face swapping process involves detecting faces
+in source images, selecting appropriate target faces, and applying the swap.
+If no faces are detected, a custom message is generated on the image.
+
+Usage:
+- Run the FastAPI application and send POST requests to the `/swapper` endpoint with an image file path
+and a mode specifying the target face. The API returns paths to the processed images with swapped faces.
+
+Dependencies:
+- FastAPI: For serving the API and handling requests.
+- InsightFace: For face detection and analysis.
+- OpenCV (cv2): For image manipulation tasks.
+- Pillow (PIL): For additional image processing capabilities, especially for watermarking and message
+  generation on images.
+
+The module is designed to be extensible, allowing for additional functionalities such as adding
+more target faces to json file, modifying watermark text and style, and enhancing face swapping algorithms.
+
+Example:
+    To swap faces in an image, send a POST request to `/swapper` with the image file path and mode.
+    The server processes the image and returns paths to the resulting images.
+
+Note:
+    Before deploying or using this module in a production environment, ensure all dependencies are installed
+    and the application is properly configured, especially the paths to target images and the database for
+    storing processed images.
+"""
+
+
 import cv2
 import os
 import json
@@ -7,11 +52,14 @@ from fastapi import FastAPI,  Form
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
+from typing import Any, Dict, List, Tuple, Optional
 
 
-
+# Define root dir and watermark
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WATERMARK = '@dimildiziotrybot'
+
+# Run FastAPI application with middleware
 app = FastAPI()
 app.add_middleware(CORSMiddleware,
                    allow_origins=["*"],  # Allows all origins
@@ -20,12 +68,23 @@ app.add_middleware(CORSMiddleware,
                    allow_headers=["*"],)  # Allows all headers
 
 
+async def get_n_name(name: str, n: int) -> str:
+    """
+    Generates a new filename by appending a number to the original filename.
 
-async def get_n_name(name, n):
+    :param name: The original filename.
+    :param n: The number (equal to the n-th face of original image faces) to append to the filename.
+    :return: A new filename with the number appended before the file extension.
+    """
     return f'{name[:-4]}_{n}.png'
 
 
-def load_target_names():
+def load_target_names() -> Dict[str, str]:
+    """
+    Loads target image names and their paths from a JSON file.
+
+    :return: A dictionary mapping modes to image file paths.
+    """
     with open(ROOTDIR + '\\target_images.json', 'r') as file:
         cats = json.load(file)
     modes_n_paths = {}
@@ -34,27 +93,52 @@ def load_target_names():
             modes_n_paths[item['mode']] = item['filepath']
     return modes_n_paths
 
+
+# Load target modes, paths and images to RAM
 targets_list = load_target_names()
-loaded_targets = {mode:cv2.imread(img_path) for mode, img_path in targets_list.items()}
+loaded_targets = {mode: cv2.imread(img_path) for mode, img_path in targets_list.items()}
 
 
-def get_swapp():
+def get_swapp() -> FaceAnalysis:
+    """
+    Initializes, prepares size and returns a FaceAnalysis object for face detection and analysis.
+
+    :return: A FaceAnalysis object configured for use.
+    """
     swapp = FaceAnalysis(name='buffalo_l')
     swapp.prepare(ctx_id=0, det_size=(640, 640))
     return swapp
 
 
-def get_swapper():
+def get_swapper() -> Any:
+    """
+    Loads and returns a face swapping model.
+
+    :return: A model object for face swapping.
+    """
     return get_model('inswapper_128.onnx', download=False)
 
 
-async def load_face(swapp, img_path):
+async def load_face(swapp: FaceAnalysis, img_path: str) -> Any:
+    """
+    Loads a face from an image file using a given FaceAnalysis object.
+
+    :param swapp: A FaceAnalysis object used for detecting faces.
+    :param img_path: The path to the image file.
+    :return: Detected faces in the image.
+    """
     read_img = cv2.imread(img_path)
     faces = swapp.get(read_img)
     return faces
 
 
-async def add_watermark_cv(image, watermark_text=WATERMARK):
+async def add_watermark_cv(image: Any, watermark_text: str = WATERMARK) -> None:
+    """
+    Adds a watermark to an image. It has shadow to be seen on white and black.
+
+    :param image: The image to which the watermark will be added. "Any" since it's not worth importing ndarray for that.
+    :param watermark_text: The text of the watermark. Defaults to a global variable WATERMARK.
+    """
     font = cv2.FONT_HERSHEY_PLAIN
     font_scale = 1
     color = (255, 255, 255)
@@ -67,7 +151,13 @@ async def add_watermark_cv(image, watermark_text=WATERMARK):
     cv2.putText(image, watermark_text, position, font, font_scale, color, thickness)
 
 
-async def select_target(mode):
+async def select_target(mode: str) -> Tuple[str, Any]:
+    """
+    Selects a target image based on the mode (order numbers in json file).
+
+    :param mode: The mode used to select the target image.
+    :return: A tuple containing the path to the target image and the image itself in ndarray (Any).
+    """
     if len(mode) < 4:
         target_path = targets_list[mode]
         result_img = loaded_targets[mode].copy()
@@ -77,7 +167,14 @@ async def select_target(mode):
     return target_path, result_img
 
 
-async def swap_faces(source_path, mode='1'):
+async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.Image]]:
+    """
+    Swaps faces between the source image and the target image specified by mode.
+
+    :param source_path: Path to the source image.
+    :param mode: Mode specifying the target image or operation.
+    :return: A list of PIL Image objects with swapped faces, or None if an error occurs.
+    """
     target_path, result_img = await select_target(mode)
     source_faces = await load_face(SWAPP, source_path)
     target_face = await load_face(SWAPP, target_path)
@@ -94,7 +191,14 @@ async def swap_faces(source_path, mode='1'):
     return result_faces
 
 
-async def get_no_face(original_image_path):
+async def get_no_face(original_image_path: str) -> Image.Image:
+    """
+    Creates an image with a text message "Чо с еблом?" when no face is detected in the original image.
+    The size of the new image is the same as original image.
+
+    :param original_image_path: Path to the original image that failed face detection.
+    :return: A PIL Image object with a custom message indicating no face was detected.
+    """
     original_image = Image.open(original_image_path)
     white_canvas = Image.new("RGB", original_image.size, "white")
     draw = ImageDraw.Draw(white_canvas)
@@ -110,7 +214,15 @@ async def get_no_face(original_image_path):
     return white_canvas
 
 
-async def get_face(temp_file, mode):
+async def get_face(temp_file: str, mode: str) -> List[str]:
+    """
+    Processes an image file to swap faces and save the resulting images with a watermark.
+    If no faces are detected, it generates an image with a predefined message.
+
+    :param temp_file: The path to the file containing the source image.
+    :param mode: The mode specifying what target faces should be swapped with.
+    :return: A list of PATHS to the saved image files.
+    """
     imgs = await swap_faces(temp_file, mode=mode)
     saved_files = []
     if imgs is None or len(imgs) == 0:
@@ -125,11 +237,19 @@ async def get_face(temp_file, mode):
 
 
 @app.post('/swapper')
-async def extract_face(file_path: str = Form(...), mode: str = Form(...)):
+async def extract_face(file_path: str = Form(...), mode: str = Form(...)) -> List[str]:
+    """
+    FastAPI endpoint to extract faces from an image file and swap them based on the provided mode.
+    The modified image(s) are saved and their PATHS are returned.
+
+    :param file_path: The path to the image file to process.
+    :param mode: The mode specifying what target faces should be swapped to.
+    :return: A list of PATHS to the saved image files.
+    """
     saved_faces = await get_face(file_path, mode)
     return saved_faces
 
 
-
+# Create instances of detectors and swappers
 SWAPP = get_swapp()
 SWAPPER = get_swapper()

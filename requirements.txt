@@ -1,4 +1,5 @@
 aiogram>=3.0
+apscheduler
 fastapi~=0.103.1
 numpy >= 1.2
 opencv-python-headless

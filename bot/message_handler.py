@@ -1,3 +1,49 @@
+"""
+This module, leveraging the asyncio library, FastAPI, Aiogram, and various image processing libraries,
+offers a sophisticated face-swapping bot capable of handling image-based requests via a Telegram bot interface.
+The bot utilizes advanced face detection and swapping algorithms to process user-submitted photos, enabling the dynamic
+replacement of faces in images with those from a predefined set of target images or user-provided content for
+premium accounts.
+
+Key Features:
+- Asynchronous handling of image processing and Telegram bot interactions for efficient operation under load.
+- Integration with FastAPI for serving a REST API that facilitates face extraction and swapping operations.
+- Utilization of the Aiogram library for Telegram bot development, supporting commands, text, and photo messages.
+- Preloading of target images and categories from JSON, allowing for easy extension of the bot's capabilities.
+- Support for premium user features, including custom target face uploads and increased processing limits.
+- Implementation of rate limiting and request tracking to manage demand and ensure equitable resource usage.
+- Provision of user support and contact information through the bot interface, enhancing user engagement.
+
+Usage:
+- Deploy the bot and interact with it via Telegram. Users can send commands to start interactions, upload photos for
+  face swapping, or inquire about their usage limits. Premium features are unlocked through specific commands.
+
+Dependencies:
+- aiohttp: For asynchronous HTTP requests within the face-swapping REST API.
+- Pillow (PIL): For image manipulation tasks, including reading, writing, and transforming images.
+- Aiogram: For creating and managing the Telegram bot interface, handling user commands, and processing messages.
+- YAML: For loading configuration data, such as contact information.
+- OpenCV (cv2): Optionally used for additional image processing capabilities.
+
+
+Configuration:
+- Before deployment, configure the database, target images, categories, and contact information in JSON and YAML files.
+  Adjust the REST API endpoint as needed to match the deployment environment.
+
+Note:
+- This module is designed to be modular and extensible, allowing for the addition of new features and improvements
+  in face detection and swapping algorithms. Ensure that all dependencies are installed and the bot token is
+  securely managed.
+  - TODO: The file is too large. Refacrtoring required and splitting it into several smaller funcs and .py files
+  - TODO: add autodeletion of custom target, original and result files that are older than a day every midnight
+
+Example:
+    Deploy the bot and interact with it through Telegram. Use commands like /start, /help, and /donate ;) to navigate
+    the bot's features. Send a photo to the bot, and it will process it according to the selected target face or
+    category.
+"""
+
+
 import aiohttp
 import io
 import json
@@ -12,62 +58,111 @@ from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyb
 from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
-                            decrement_requests_left, buy_premium, update_photo_timestamp, receive_user, \
+                            decrement_requests_left, buy_premium, update_photo_timestamp, fetch_user_by_id, \
                             toggle_receive_target_flag, decrement_targets_left
+from typing import Dict, Any, Optional
 
 
-def load_target_names():
+def load_target_names() -> Dict[str, Dict[str, Dict[str, str]]]:
+    """
+    Load target names from a JSON file.
+
+    :return: A dictionary containing target names.
+    """
     with open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images.json', 'r') as file:
         return json.load(file)
 
 
-def get_contacts():
+def get_contacts() -> Dict[str, str]:
+    """
+    Get contacts from a YAML file.
+
+    :return: A dictionary containing contact information.
+    """
     with open('bot/contacts.yaml', 'r') as f:
         config = yaml.safe_load(f)
     return config
 
 
+# Define constants
 targets = load_target_names()
 preloaded_collages = {category: FSInputFile(collage_path) for category, collage_path in targets['collages'].items()}
 FACE_EXTRACTION_URL = 'http://localhost:8000/swapper'
 DELAY_BETWEEN_IMAGES = 2
-SENT_TIME = {}
-CONTACTS = get_contacts()
+SENT_TIME = {}   # dictionary with user IDs and timestamps
+CONTACTS: Dict[str, str] = get_contacts()
 
 
+async def generate_filename(folder: str = 'original') -> str:
+    """
+    Asynchronously generates a unique filename for storing an image in a specified folder.
 
-
-async def generate_filename(folder='original'):
+    :param folder: The name of the folder within 'temp' (custom targets or original imgs) where the file will be stored.
+    :return: The absolute path to the generated filename.
+    """
     while True:
         filename = os.path.join('temp/'+folder, f'img_{random.randint(100, 999999)}.png')
         if not os.path.exists(filename):
             return os.path.join(os.getcwd(), filename)
 
 
-async def handle_start(message):
+async def handle_start(message: Message) -> None:
+    """
+    Handles the start command from a user by checking their existence, sending a welcome message,
+    and prompting for a photo.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
     await message.answer("Welcome! Send me a photo of a person and I will return their face.")
     await handle_category_command(message)
 
 
-async def handle_support(message):
+async def handle_support(message: Message) -> None:
+    """
+    Handles a support request from a user by sending their information to the administrator and
+    notifying the user that their request has been forwarded. However, so far sends user id, not the link to account.
+
+    :param message: The message with user data.
+    :return: None
+    """
     user = f'ids:{message.id} @{message.username} {message.url}\n' \
            f'name: {message.first_name} {message.last_name} {message.full_name}'
     await message.bot.send_message(CONTACTS['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
 
-async def handle_contacts(message):
-    await message.answer(f"Reach me out through:\nTelegram: @{CONTACTS['telegram']}\nGithub: {CONTACTS['github']}\n")
+async def handle_contacts(message) -> None:
+    """
+    Sends the contact information to user.
+
+    :param message: The user data message.
+    :return: None
+    """
+    #                                          f"\nGithub: {CONTACTS['github']}\n")
+    await message.answer(f"Reach me out through:\nTelegram: @{CONTACTS['telegram']}")
 
 
-async def donate_link(message):
+async def donate_link(message) -> None:
+    """
+    Sends a message to the user with information on how to support via cryptocurrency.
+
+    :param message: User data message.
+    :return: None
+    """
     response_message = "Support me with BTC:"
     await message.answer(response_message)
     await message.answer(CONTACTS['cryptohash'])
 
 
-async def handle_help(message):
+async def handle_help(message: Message) -> None:
+    """
+    Sends a help message to the user with available commands.
+
+    :param message: The user data message from the user.
+    :return: None
+    """
     help_message = (
         "This bot can only process photos that have people on it. Here are the available commands:\n"
         "/start - Start the bot\n"
@@ -84,19 +179,41 @@ async def handle_help(message):
     await message.answer(help_message)
 
 
-async def save_img(img, img_path):
+async def save_img(img: bytes, img_path: str) -> None:
+    """
+    Saves an image from a byte stream to a specified path.
+
+    :param img: The image data in bytes.
+    :param img_path: The file path where the image will be saved.
+    :return: None
+    """
     orig = Image.open(io.BytesIO(img))
     orig.save(img_path, format='PNG')
 
 
-async def check_limit(user, message):
+async def check_limit(user: Any, message: Message) -> bool:
+    """
+    Checks if the user has reached their request limit.
+
+    :param user: The user class object.
+    :param message: The user data message from the user.
+    :return: True if the user has requests left, False otherwise.
+    """
     if user.requests_left <= 0:
         await message.answer("Sorry, you are out of attempts. Try again later")
         return False
     return True
 
 
-async def check_time_limit(user, message, n_time=20):
+async def check_time_limit(user: Any, message: Message, n_time: int = 20) -> bool:
+    """
+    Checks if a user has reached a time limit for an action.
+
+    :param user: The user class object.
+    :param message: The message obj.
+    :param n_time: The time limit in seconds (default is 20).
+    :return: True if the user is within the time limit, False otherwise.
+    """
     if user.status == 'premium':
         return True
     if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=n_time):
@@ -107,7 +224,13 @@ async def check_time_limit(user, message, n_time=20):
     return True
 
 
-async def prevent_multisending(message):
+async def prevent_multisending(message: Message) -> bool:
+    """
+    Prevents multiple messages from being sent in a short time.
+
+    :param message: The message object.
+    :return: True if the message can be sent, False otherwise.
+    """
     dt = datetime.now()
     last_sent = SENT_TIME.get(message.from_user.id, None)
     if message.media_group_id is None and (last_sent is None or (
@@ -117,7 +240,27 @@ async def prevent_multisending(message):
     return False
 
 
-async def handle_image(message: Message, token):
+async def handle_image(message: Message, token: str) -> None:
+    """
+    Handles image processing based on user requests.
+
+    This function processes an image received as a message and performs various actions based on user requests:
+    1. Checks if the user exists and is within usage limits.
+    2. Fetches user data and updates the timestamp for the last photo sent.
+    3. Downloads the image from Telegram using the provided bot token.
+    4. Generates an input file path and logs input image data.
+    5. Initiates processing of the image through FastAPI.
+    6. Handles various responses from the processing:
+       - If the image is successfully downloaded, it is saved, and target image checks are performed.
+       - If the processed image paths are received, they are logged and sent as photo messages to the user.
+       - Limits on user requests are updated and notifications are sent to the user.
+    7. In case of any exceptions or errors during the process, appropriate error messages are sent.
+    Note: TODO: split in several functions
+
+    :param message: The message with user data.
+    :param token: The Telegram bot token.
+    :return: None
+    """
     await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
     if not (await check_limit(user, message) and await check_time_limit(user, message)):
@@ -138,9 +281,10 @@ async def handle_image(message: Message, token):
                     content = await response.read()
                     await save_img(content, input_path)
                     if await target_image_check(user, input_path):
-                        await message.answer(f'Target image uploaded. Uploads left: {user.targets_left}'
+                        await message.answer(f'Target image uploaded. Uploads left: {user.targets_left-1}'
                                              f'\nSend your source image')
-                        await decrement_targets_left(user.user_id)
+                        await decrement_targets_left(user.user_id)  # due to async it does not keep up with m.answer
+
                         return
                 else:
                     error_message = await response.text()
@@ -182,7 +326,13 @@ async def handle_image(message: Message, token):
         await message.answer('Sorry must have been an error. Try again later.')
 
 
-async def handle_text(message: Message):
+async def handle_text(message: Message) -> None:
+    """
+    Handles text messages from users by providing a response that it cannot handle text message :).
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
     await log_text_data(message)
     response_text = (
@@ -192,16 +342,34 @@ async def handle_text(message: Message):
     await message.answer(response_text)
 
 
-async def handle_unsupported_content(message: Message):
+async def handle_unsupported_content(message: Message) -> None:
+    """
+    Handles all other unsupported content by providing a response to the user.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await message.answer("Sorry, I can't handle this type of content.\n"
                          "Please send me a photo from your gallery, and I will return the face of a person on it.")
 
 
-async def output_all_users_to_console(*args):
+async def output_all_users_to_console(*args) -> None:
+    """
+    Outputs all user data to the console.
+
+    :param args: Dummy args since Message will be sent by the message handler aiogram
+    :return: None
+    """
     await fetch_all_users_data()
 
 
-async def set_user_to_premium(message):
+async def set_user_to_premium(message: Message) -> None:
+    """
+    Sets a user to premium status and provides a response.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
     await buy_premium(message.from_user.id)
     user = await fetch_user_data(message.from_user.id)
@@ -209,31 +377,56 @@ async def set_user_to_premium(message):
                          f'\nYou have {user.requests_left} attempts left and {user.targets_left} custom target uploads')
 
 
-async def reset_images_left(message):
+async def reset_images_left(message: Message) -> None:
+    """
+    Resets the number of image processing attempts left for a user and provides a response.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
     n = 10
     await set_requests_left(message.from_user.id, n)
     new_number = await fetch_user_data(message.from_user.id)
-    await message.answer(f'You have {new_number.requests_left} attempts left' )
+    await message.answer(f'You have {new_number.requests_left} attempts left')
 
 
-async def check_status(message):
+async def check_status(message: Message) -> None:
+    """
+    Checks and reports the user's account status and remaining attempts/target uploads.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
     is_prem = 'left' if user.status == 'free' else f'with {user.targets_left} target uploads left'
     await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts {is_prem}')
 
 
-async def target_image_check(user, input_image):
+async def target_image_check(user: Any, input_image: str) -> Optional[str]:
+    """
+    Checks if the user is eligible to send a target image and updates user mode accordingly.
+
+    :param user: The user db object.
+    :param input_image: The input image path.
+    :return: The input image path if conditions are met, None otherwise.
+    """
     if user.status == 'premium' and user.receive_target_flag and user.targets_left:
         await update_user_mode(user.user_id, input_image)
         await toggle_receive_target_flag(user.user_id)
         return input_image
 
 
-async def set_receive_flag(message):
+async def set_receive_flag(message: Message) -> None:
+    """
+    Sets the user to be able to send a new target image if they meet the criteria.
+
+    :param message: The message with user data.
+    :return: None
+    """
     await exist_user_check(message)
-    user = await receive_user(message.from_user.id)
+    user = await fetch_user_by_id(message.from_user.id)
     if user.status == 'premium' and user.targets_left > 0:
         await toggle_receive_target_flag(message.from_user.id, 1)
         await message.answer('Changing set to receiving a new target.\nSend target image.')
@@ -241,12 +434,24 @@ async def set_receive_flag(message):
     await message.answer('You need to be a premium user with unspent uploads limit for that. Use /buy_premium function')
 
 
-async def handle_category_command(message: Message):
+async def handle_category_command(message: Message) -> None:
+    """
+    Handles a command to choose a target category and displays the category buttons.
+
+    :param message: The message with user data.
+    :return: None
+    """
     keyboard = await create_category_buttons()
     await message.answer("Choose your target category:", reply_markup=keyboard)
 
 
-async def create_category_buttons():
+async def create_category_buttons() -> InlineKeyboardMarkup:
+    """
+    Creates inline keyboard buttons for target categories and put them in rows of 2 elements each.
+    Dynamically changes buttons.
+
+    :return: InlineKeyboardMarkup containing the category buttons.
+    """
     row, keyboard_buttons = [], []
     for category in targets['categories']:
         text = category.capitalize()
@@ -260,11 +465,25 @@ async def create_category_buttons():
     return InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
 
-async def show_category_collage(query, category):
+async def show_category_collage(query: CallbackQuery, category: str) -> None:
+    """
+    Shows a collage of images for a specific category.
+
+    :param query: The callback query.
+    :param category: The category for which to show the collage.
+    :return: None
+    """
     await query.message.answer_photo(photo=preloaded_collages[category])
 
 
-async def show_images_for_category(query: CallbackQuery, category: str):
+async def show_images_for_category(query: CallbackQuery, category: str) -> None:
+    """
+    Shows images for a specific category and provides selection options as well as back button.
+
+    :param query: The callback query.
+    :param category: The category for which to show images.
+    :return: None
+    """
     await show_category_collage(query, category)
     buttons = [[InlineKeyboardButton(text=item["name"], callback_data=item['mode']) for item in chunk]
                for chunk in chunk_list(targets['categories'].get(category, []), 2)]
@@ -274,12 +493,25 @@ async def show_images_for_category(query: CallbackQuery, category: str):
     await query.message.edit_text(f"Choose an image from {category.title()}:", reply_markup=keyboard)
 
 
-def chunk_list(data, size):
+def chunk_list(data: list, size: int):
+    """
+    Splits a list into chunks of a specified size.
+
+    :param data: The list to split into chunks.
+    :param size: The size of each chunk.
+    :return: A generator yielding chunks of the list.
+    """
     for i in range(0, len(data), size):
         yield data[i:i + size]
 
 
-async def process_image_selection(query: CallbackQuery):
+async def process_image_selection(query: CallbackQuery) -> None:
+    """
+    Processes the selection of a custom target image and updates user settings.
+
+    :param query: The callback query.
+    :return: None
+    """
     user_id = query.from_user.id
     data = query.data
     await toggle_receive_target_flag(user_id)
@@ -289,7 +521,14 @@ async def process_image_selection(query: CallbackQuery):
     await query.answer()
 
 
-def setup_handlers(dp, bot_token):
+def setup_handlers(dp: Any, bot_token: str) -> None:
+    """
+    Sets up handlers for different commands, messages, and callbacks.
+
+    :param dp: The bot dispatcher object.
+    :param bot_token: The Telegram bot token.
+    :return: None
+    """
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
@@ -303,7 +542,7 @@ def setup_handlers(dp, bot_token):
     dp.message(Command('select'))(handle_category_command)
     dp.callback_query()(button_callback_handler)
 
-    async def image_handler(message: Message):
+    async def image_handler(message: Message) -> None:
         if await prevent_multisending(message):
             await handle_image(message, bot_token)
             return
@@ -315,7 +554,13 @@ def setup_handlers(dp, bot_token):
                handle_unsupported_content)
 
 
-async def button_callback_handler(query: CallbackQuery):
+async def button_callback_handler(query: CallbackQuery) -> None:
+    """
+    Handles button callbacks from inline keyboards. Categories, modes (numbers) and back button.
+
+    :param query: CallbackQuery.
+    :return: None
+    """
     if query.data.startswith('c_'):  # Check if the callback data starts with 'c_'
         category = query.data.split('_')[1]
         await show_images_for_category(query, category)
