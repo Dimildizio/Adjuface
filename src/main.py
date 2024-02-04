@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.message_handler import setup_handlers
 from bot.db_requests import initialize_database, update_user_quotas
+from utils import remove_old_image
 from typing import Any
 
 
@@ -56,5 +57,6 @@ if __name__ == '__main__':
     dispatcher = Dispatcher()
     asyncio.run(initialize_database())
     scheduler.add_job(update_user_quotas, 'cron', hour=0, minute=0, second=0, timezone='UTC')
+    scheduler.add_job(remove_old_image, 'cron', hour=0, minute=0, second=0, timezone='UTC')
     asyncio.run(main(dispatcher, ibot))
     scheduler.start()
