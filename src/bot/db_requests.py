@@ -86,6 +86,25 @@ class ImageName(Base):
 
     user = relationship("User", back_populates="image_names")
 
+async def clear_output_images_by_user_id(user_id: int) -> None:
+    """
+    Clears (deletes) output image names associated with a given user ID.
+
+    :param user_id: The Telegram ID of the user whose output images are to be cleared.
+    :return: None
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            image_name_records = await session.execute(
+                select(ImageName).filter_by(user_id=user_id)
+            )
+            image_names = image_name_records.scalars().all()
+
+            for image_name in image_names:
+                image_name.output_image_names = ''
+                image_name.input_image_name = ''
+            await session.commit()
+
 
 async def initialize_database() -> None:
     """"

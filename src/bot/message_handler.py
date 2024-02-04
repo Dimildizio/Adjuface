@@ -59,7 +59,7 @@ from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp, fetch_user_by_id, \
-                            toggle_receive_target_flag, decrement_targets_left
+                            toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id
 from typing import Dict, Any, Optional
 
 
@@ -357,13 +357,14 @@ async def handle_unsupported_content(message: Message) -> None:
                          "Please send me a photo from your gallery, and I will return the face of a person on it.")
 
 
-async def output_all_users_to_console(*args) -> None:
+async def output_all_users_to_console(message) -> None:
     """
-    Outputs all user data to the console.
+    Outputs all user data to the console. Cleans your own outputs since it's usually too long
 
-    :param args: Dummy args since Message will be sent by the message handler aiogram
+    :param message: Dummy args since Message will be sent by the message handler aiogram
     :return: None
     """
+    await clear_output_images_by_user_id(message.from_user.id)
     await fetch_all_users_data()
 
 
