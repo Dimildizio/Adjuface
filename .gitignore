@@ -1,9 +1,9 @@
-/temp
-/config.yaml
-/target_images.json
-/user_database.db
-/bot/contacts.yaml
-/face_carver/inswapper_128.onnx
+/src/temp
+/src/config.yaml
+/src/target_images.json
+/src/user_database.db
+/src/bot/contacts.yaml
+/src/face_carver/inswapper_128.onnx
 /research/face_extraction/models
 /research/face_extraction/seg_models
 /research/gans/models/variables/variables.data-00000-of-00001
