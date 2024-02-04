@@ -206,7 +206,7 @@ async def get_no_face(original_image_path: str) -> Image.Image:
         font = ImageFont.truetype("arial.ttf", 50)
     except IOError:
         font = ImageFont.load_default()
-    text = "Чо с еблом?"
+    text = "Что с лицом?"
     text_width = font.getlength(text)  # draw.textbbox((0,0))text, font=font)
     text_x = (white_canvas.width - text_width) // 2
     text_y = white_canvas.height // 2 - 10

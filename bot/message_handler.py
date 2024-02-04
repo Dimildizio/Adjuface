@@ -85,12 +85,15 @@ def get_contacts() -> Dict[str, str]:
 
 
 # Define constants
-targets = load_target_names()
-preloaded_collages = {category: FSInputFile(collage_path) for category, collage_path in targets['collages'].items()}
+TARGETS = load_target_names()
+PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
+CONTACTS: Dict[str, str] = get_contacts()
+
 FACE_EXTRACTION_URL = 'http://localhost:8000/swapper'
+TGBOT_PATH = 'https://api.telegram.org/file/bot'
+
 DELAY_BETWEEN_IMAGES = 2
 SENT_TIME = {}   # dictionary with user IDs and timestamps
-CONTACTS: Dict[str, str] = get_contacts()
 
 
 async def generate_filename(folder: str = 'original') -> str:
@@ -127,8 +130,8 @@ async def handle_support(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    user = f'ids:{message.id} @{message.username} {message.url}\n' \
-           f'name: {message.first_name} {message.last_name} {message.full_name}'
+    m = message.from_user
+    user = f'ids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
     await message.bot.send_message(CONTACTS['my_id'], f'User: {user} requires help')
     await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
 
@@ -268,7 +271,7 @@ async def handle_image(message: Message, token: str) -> None:
     await update_photo_timestamp(user.user_id, datetime.now())
 
     file_path = await message.bot.get_file(message.photo[-1].file_id)
-    file_url = f"https://api.telegram.org/file/bot{token}/{file_path.file_path}"
+    file_url = f"{TGBOT_PATH}{token}/{file_path.file_path}"
     input_path = await generate_filename('target_images' if user.receive_target_flag else 'original')
     await log_input_image_data(message, input_path)
 
@@ -297,6 +300,7 @@ async def handle_image(message: Message, token: str) -> None:
                                           'mode': user.mode}
                                     ) as response:
                 print('Sending image path through fastapi')
+
 
                 if response.status == 200:
                     image_data_list = await response.text()
@@ -401,7 +405,7 @@ async def check_status(message: Message) -> None:
     await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
     is_prem = 'left' if user.status == 'free' else f'with {user.targets_left} target uploads left'
-    await message.answer(f'Your have a {user.status} account\nYou have {user.requests_left} attempts {is_prem}')
+    await message.answer(f'Your have a {user.status} account\nToday you have {user.requests_left} attempts {is_prem}')
 
 
 async def target_image_check(user: Any, input_image: str) -> Optional[str]:
@@ -453,7 +457,7 @@ async def create_category_buttons() -> InlineKeyboardMarkup:
     :return: InlineKeyboardMarkup containing the category buttons.
     """
     row, keyboard_buttons = [], []
-    for category in targets['categories']:
+    for category in TARGETS['categories']:
         text = category.capitalize()
         data = f'c_{category}'
         row.append(InlineKeyboardButton(text=text, callback_data=data))
@@ -473,7 +477,7 @@ async def show_category_collage(query: CallbackQuery, category: str) -> None:
     :param category: The category for which to show the collage.
     :return: None
     """
-    await query.message.answer_photo(photo=preloaded_collages[category])
+    await query.message.answer_photo(photo=PRELOADED_COLLAGES[category])
 
 
 async def show_images_for_category(query: CallbackQuery, category: str) -> None:
@@ -486,7 +490,7 @@ async def show_images_for_category(query: CallbackQuery, category: str) -> None:
     """
     await show_category_collage(query, category)
     buttons = [[InlineKeyboardButton(text=item["name"], callback_data=item['mode']) for item in chunk]
-               for chunk in chunk_list(targets['categories'].get(category, []), 2)]
+               for chunk in chunk_list(TARGETS['categories'].get(category, []), 2)]
     back_button = InlineKeyboardButton(text="Back", callback_data="back")
     buttons.append([back_button])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)

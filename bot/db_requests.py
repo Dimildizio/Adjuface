@@ -55,7 +55,7 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     mode = Column(Integer, default=1)
-    receive_target_flag = Column(Integer, default=1)
+    receive_target_flag = Column(Integer, default=0)
     status = Column(String, default='free')
     requests_left = Column(Integer, default=10)
     targets_left = Column(Integer, default=0)
