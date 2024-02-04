@@ -1,5 +1,0 @@
-aiogram>=3.0
-aiohttp
-fastapi
-httpx
-insightface

@@ -1,0 +1,22 @@
+services:
+  adjuface_bot:
+    build:
+      context: ./Adjuface/bot
+    volumes:
+      - ./Adjuface/bot:/app
+    depends_on:
+      - face_swapper
+    command: ["python", "main.py"]
+    networks:
+      - default
+
+  face_swapper:
+    build:
+      context: ./Adjuface/face_carver
+    volumes:
+      - ./Adjuface/face_carver:/app
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "swapper:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - default

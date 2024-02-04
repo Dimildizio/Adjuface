@@ -1,13 +1,14 @@
 aiogram>=3.0
+aiohttp~=3.9.1
 apscheduler
 fastapi~=0.103.1
 numpy >= 1.2
+httpx
 pillow >= 9.0
 python-multipart
 pyyaml~=6.0.1
 torch
 uvicorn
-aiohttp~=3.9.1
 opencv-python
 insightface==0.7.3
 sqlalchemy

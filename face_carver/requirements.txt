@@ -1,0 +1,8 @@
+numpy >= 1.2
+pillow >= 9.0
+python-multipart
+pyyaml~=6.0.1
+torch
+uvicorn
+opencv-python
+insightface==0.7.3
