@@ -118,7 +118,10 @@ async def handle_start(message: Message) -> None:
     :return: None
     """
     await exist_user_check(message)
-    await message.answer("Welcome! Send me a photo of a person and I will return their face.")
+    welcome = "Welcome! Send me a photo of a person and I will return their face.\n\n" \
+           "For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
+
+    await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
     await handle_category_command(message)
 
 
