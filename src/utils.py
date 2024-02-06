@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from typing import Tuple
 
 
-def list_project_structure(path: str, to_ignore: Tuple[str, ...], indent: int = 0) -> None:
+def list_project_structure(path: str, to_ignore: Tuple[str, ...] = ('temp', '__pycache__', 'research'),
+                           indent: int = 0) -> None:
     """
     Lists the project directory structure, ignoring specified directories.
 
@@ -44,11 +45,3 @@ async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\targe
                 if now - file_creation_time > time_threshold:
                     os.remove(file_path)
                     print(f"Deleted: {file_path} - {file_creation_time}")
-
-
-if __name__ == "__main__":
-    remove_old_image(hour_delay=24)
-
-    ignore = ('temp', '__pycache__', 'research')
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # os.getcwd()
-    list_project_structure(project_root, ignore)

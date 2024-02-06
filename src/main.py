@@ -68,14 +68,15 @@ async def run_bot_and_scheduler() -> None:
     """
     token = get_token()
     bot = Bot(token=token)
-    dp = Dispatcher(bot)
+    dp = Dispatcher()
     await initialize_database()
-
     # Run
     await asyncio.gather(
         start_scheduler(),
-        main(dp, bot))
+        main(dp, bot)
+    )
 
 
 if __name__ == '__main__':
-    asyncio.run(run_bot_and_scheduler)
+    print(list_all_loggers())
+    asyncio.run(run_bot_and_scheduler())
