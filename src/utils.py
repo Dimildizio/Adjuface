@@ -38,13 +38,13 @@ async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\targe
     time_threshold = timedelta(hours=hour_delay)
     for folder_path in paths:
         for filename in os.listdir(folder_path):
-            file_path = os.path.join(os.getcwd(), folder_path, filename)
-
-            if filename.startswith(name_start) and os.path.isfile(file_path):
-                file_creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
-                if now - file_creation_time > time_threshold:
-                    os.remove(file_path)
-                    print(f"Deleted: {file_path} - {file_creation_time}")
+            if filename not in ('collages', 'preset'):
+                file_path = os.path.join(os.getcwd(), folder_path, filename)
+                if filename.startswith(name_start) and os.path.isfile(file_path):
+                    file_creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
+                    if now - file_creation_time > time_threshold:
+                       # os.remove(file_path)
+                        print(f"Deleted: {file_path} - {file_creation_time}")
 
 
 if __name__ == "__main__":
