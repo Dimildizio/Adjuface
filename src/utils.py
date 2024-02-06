@@ -25,7 +25,7 @@ def list_project_structure(path: str, to_ignore: Tuple[str, ...], indent: int = 
 
 
 async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\target_images'),
-                           hour_delay: int = 48, name_start: str = 'img'):
+                           hour_delay: int = 24, name_start: str = 'img'):
     """
     Removes images that are older than a specified time delay and start with a specified name from a folders.
 
@@ -38,13 +38,12 @@ async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\targe
     time_threshold = timedelta(hours=hour_delay)
     for folder_path in paths:
         for filename in os.listdir(folder_path):
-            if filename not in ('collages', 'preset'):
-                file_path = os.path.join(os.getcwd(), folder_path, filename)
-                if filename.startswith(name_start) and os.path.isfile(file_path):
-                    file_creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
-                    if now - file_creation_time > time_threshold:
-                       # os.remove(file_path)
-                        print(f"Deleted: {file_path} - {file_creation_time}")
+            file_path = os.path.join(os.getcwd(), folder_path, filename)
+            if filename.startswith(name_start) and os.path.isfile(file_path):
+                file_creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
+                if now - file_creation_time > time_threshold:
+                    os.remove(file_path)
+                    print(f"Deleted: {file_path} - {file_creation_time}")
 
 
 if __name__ == "__main__":

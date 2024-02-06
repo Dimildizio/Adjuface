@@ -49,13 +49,33 @@ def list_all_loggers() -> None:
         logger_info[logger.name] = logger.getEffectiveLevel()
 
 
-if __name__ == '__main__':
-    print(list_all_loggers())
+async def start_scheduler() -> None:
+    """
+    Starts the scheduler and adds jobs to run every 24 hours.
+    """
     scheduler = AsyncIOScheduler()
-    ibot = Bot(token=get_token())
-    dispatcher = Dispatcher()
-    asyncio.run(initialize_database())
     scheduler.add_job(update_user_quotas, 'cron', hour=0, minute=0, second=0, timezone='UTC')
     scheduler.add_job(remove_old_image, 'cron', hour=0, minute=0, second=0, timezone='UTC')
-    asyncio.run(main(dispatcher, ibot))
     scheduler.start()
+    # Keep the scheduler running in the background
+    while True:
+        await asyncio.sleep(3600)
+
+
+async def run_bot_and_scheduler() -> None:
+    """
+    Initializes the bot, database, and starts both the bot and the scheduler concurrently.
+    """
+    token = get_token()
+    bot = Bot(token=token)
+    dp = Dispatcher(bot)
+    await initialize_database()
+
+    # Run
+    await asyncio.gather(
+        start_scheduler(),
+        main(dp, bot))
+
+
+if __name__ == '__main__':
+    asyncio.run(run_bot_and_scheduler)
