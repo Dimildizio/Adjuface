@@ -47,7 +47,6 @@ def list_all_loggers() -> None:
         if 'sqlalchemy' in logger.name:
             logger.setLevel(logging.ERROR)
         logger_info[logger.name] = logger.getEffectiveLevel()
-    return logger_info
 
 
 if __name__ == '__main__':

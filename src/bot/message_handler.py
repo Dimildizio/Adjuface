@@ -119,7 +119,7 @@ async def handle_start(message: Message) -> None:
     """
     await exist_user_check(message)
     welcome = "Welcome! Send me a photo of a person and I will return their face.\n\n" \
-           "For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
+              "For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
 
     await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
     await handle_category_command(message)
@@ -172,12 +172,12 @@ async def handle_help(message: Message) -> None:
     help_message = (
         "This bot can only process photos that have people on it. Here are the available commands:\n"
         "/start - Start the bot\n"
-        "/help - Display this help message\n"
+        "/menu - Select a category of pictures\n"
         "/status - Check your account limits\n"
-        "/select - Select a category of pictures\n"
+        "/target - Premium option to add your target image\n"
+        "/help - Display this help message\n"
         "/reset_user - (Debug): Reset your status and set image limit to 10\n"
         "/buy_premium - Add 100 images and set account to premium\n"
-        "/custom_target - Premium option to add your target image\n"
         "/contacts - Show contacts list\n"
         "/support - Send a support request\n"
         "/donate - Support me\n"
@@ -303,7 +303,6 @@ async def handle_image(message: Message, token: str) -> None:
                                           'mode': user.mode}
                                     ) as response:
                 print('Sending image path through fastapi')
-
 
                 if response.status == 200:
                     image_data_list = await response.text()
@@ -542,12 +541,12 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
     dp.message(Command('show_users'))(output_all_users_to_console)
-    dp.message(Command('custom_target'))(set_receive_flag)
+    dp.message(Command('target'))(set_receive_flag)
     dp.message(Command('buy_premium'))(set_user_to_premium)
     dp.message(Command('reset_user'))(reset_images_left)
     dp.message(Command('status'))(check_status)
     dp.message(Command('donate'))(donate_link)
-    dp.message(Command('select'))(handle_category_command)
+    dp.message(Command('menu'))(handle_category_command)
     dp.callback_query()(button_callback_handler)
 
     async def image_handler(message: Message) -> None:
