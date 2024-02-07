@@ -118,8 +118,10 @@ async def handle_start(message: Message) -> None:
     :return: None
     """
     await exist_user_check(message)
-    welcome = "Welcome! Send me a photo of a person and I will return their face.\n\n" \
-              "For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
+    limits = await fetch_user_by_id(message.from_user.id)
+    welcome = f"Welcome! Send me a photo of a person and I will return their face.\n\n" \
+              f"You have {limits.requests_left} free attempts today. Limits are updated daily\n" \
+              f"For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
 
     await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
     await handle_category_command(message)

@@ -167,6 +167,7 @@ async def select_target(mode: str) -> Tuple[str, Any]:
     return target_path, result_img
 
 
+
 async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.Image]]:
     """
     Swaps faces between the source image and the target image specified by mode.

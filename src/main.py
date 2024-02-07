@@ -4,7 +4,7 @@ import yaml
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.message_handler import setup_handlers
-from bot.db_requests import initialize_database, update_user_quotas
+from bot.db_requests import initialize_database, update_user_quotas, log_scheduler_run
 from utils import remove_old_image
 from typing import Any
 
@@ -41,12 +41,16 @@ def list_all_loggers() -> None:
     # logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.ERROR)
     root_logger = logging.getLogger('')
     loggers = [root_logger] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    # if 'sqlalchemy' in name]
     logger_info = {}
     for logger in loggers:
         if 'sqlalchemy' in logger.name:
             logger.setLevel(logging.ERROR)
         logger_info[logger.name] = logger.getEffectiveLevel()
+
+
+async def remove_imgs_log() -> None:
+    await remove_old_image()
+    await log_scheduler_run("remove_old_image", "success", "Completed removing old images", 24)
 
 
 async def start_scheduler() -> None:
@@ -55,7 +59,7 @@ async def start_scheduler() -> None:
     """
     scheduler = AsyncIOScheduler()
     scheduler.add_job(update_user_quotas, 'cron', hour=0, minute=0, second=0, timezone='UTC')
-    scheduler.add_job(remove_old_image, 'cron', hour=0, minute=0, second=0, timezone='UTC')
+    scheduler.add_job(remove_imgs_log, 'cron', hour=0, minute=0, second=0, timezone='UTC')
     scheduler.start()
     # Keep the scheduler running in the background
     while True:

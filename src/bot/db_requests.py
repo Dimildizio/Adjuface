@@ -26,13 +26,13 @@ Note: Before using this module, ensure the database file path and SQLAlchemy eng
 for your application's requirements. Also make sure all necessary config and yaml files are set on the root level.
 """
 
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, func
+from datetime import datetime, timedelta
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, func, select, desc
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import Dict, Optional, List, Any, Union
+
 
 # Set  credentials and run DB
 Base = declarative_base()  # Class name after all
@@ -85,6 +85,55 @@ class ImageName(Base):
     output_image_names = Column(String)
 
     user = relationship("User", back_populates="image_names")
+
+
+class SchedulerLog(Base):
+    __tablename__ = 'scheduler_logs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_name = Column(String, nullable=False)
+    run_datetime = Column(TIMESTAMP, server_default=func.now())
+    status = Column(String, nullable=False)
+    details = Column(String, nullable=True)
+
+    def __repr__(self):
+        return f"<SchedulerLog(job_name='{self.job_name}', run_datetime='{self.run_datetime}', " \
+               f"status='{self.status}', details='{self.details}')>"
+
+
+async def log_scheduler_run(job_name: str, status: str = "success", details: str = None, hour_delay: int = 24):
+    """
+    Logs a scheduler run if 24 hours have passed since the last run, or creates an entry if none exists.
+
+    :param job_name: The name of the job that was run.
+    :param status: The status of the job run (default is 'success').
+    :param details: Optional details about the job run.
+    :param hour_delay: The delay in hours to check against the last run time (default is 24 hours).
+    :return: None
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            # Check the last entry for the job
+            last_entry = await session.execute(
+                select(SchedulerLog)
+                .filter_by(job_name=job_name)
+                .order_by(desc(SchedulerLog.run_datetime))
+                .limit(1)
+            )
+            last_entry = last_entry.scalar_one_or_none()
+
+            now = datetime.now()
+
+            # If there's no last entry or 24 hours have passed since the last run, log a new entry
+            if not last_entry or now - last_entry.run_datetime >= timedelta(hours=hour_delay):
+                new_log = SchedulerLog(job_name=job_name, status=status, details=details)
+                session.add(new_log)
+                await session.commit()
+                print(f"Logged new run for {job_name}.")
+            else:
+                print(f"No need to log {job_name} yet.")
+            await fetch_scheduler_logs(job_name)
+
 
 async def clear_output_images_by_user_id(user_id: int) -> None:
     """
@@ -494,7 +543,6 @@ async def toggle_receive_target_flag(user_id: int, flag: int = 0):
             if user:
                 user.receive_target_flag = flag
                 await session.commit()
-            # return user.receive_target_flag
 
 
 async def fetch_user_by_id(user_id: int) -> Optional[User]:
@@ -510,13 +558,15 @@ async def fetch_user_by_id(user_id: int) -> Optional[User]:
         return user
 
 
-async def update_user_quotas(free_requests: int = 10, premium_requests: int = 100, targets: int = 10) -> None:
+async def update_user_quotas(free_requests: int = 10, premium_requests: int = 100,
+                             targets: int = 10, td: int = 24) -> None:
     """
     Update user quotas based on their status.
 
     :param free_requests: The number of requests for free users.
     :param premium_requests: The number of requests for premium users.
     :param targets: The number of targets for users.
+    :param td: time interval to check.
     :return: None
     """
     async with AsyncSession(async_engine) as session:
@@ -532,3 +582,32 @@ async def update_user_quotas(free_requests: int = 10, premium_requests: int = 10
                     if user.targets_left < targets:
                         user.targets_left = targets
             await session.commit()
+    await log_scheduler_run("update_user_quotas", "success", "Completed updating user quotas", td)
+
+
+async def fetch_scheduler_logs(job_name: str = None):
+    """
+    Fetches entries from the scheduler_logs table, optionally filtered by a specific job name.
+
+    :param job_name: Optional. The name of the job to filter logs by.
+    :return: A list of dictionaries containing log entries.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            if job_name:
+                query = select(SchedulerLog).where(SchedulerLog.job_name == job_name).order_by(
+                        SchedulerLog.run_datetime.desc())
+            else:
+                query = select(SchedulerLog).order_by(SchedulerLog.run_datetime.desc())
+            result = await session.execute(query)
+            logs = result.scalars().all()
+
+            log_entries = [
+                {"id": log.id,
+                 "job_name": log.job_name,
+                 "run_datetime": log.run_datetime,
+                 "status": log.status,
+                 "details": log.details}
+                for log in logs]
+            print(log_entries)
+            return log_entries

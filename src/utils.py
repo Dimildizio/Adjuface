@@ -1,6 +1,8 @@
 import os
 from datetime import datetime, timedelta
 from typing import Tuple
+from sqlalchemy import Table, Column, Integer, String, TIMESTAMP, MetaData, func, text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 
 def list_project_structure(path: str, to_ignore: Tuple[str, ...] = ('temp', '__pycache__', 'research'),
@@ -45,3 +47,41 @@ async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\targe
                 if now - file_creation_time > time_threshold:
                     os.remove(file_path)
                     print(f"Deleted: {file_path} - {file_creation_time}")
+
+
+async def add_scheduler_logs_table() -> None:
+    """"Migrate db creating a new scheduler logs table"""
+    from bot.db_requests import async_engine
+    metadata = MetaData()
+    scheduler_logs_table = Table(
+        'scheduler_logs', metadata,
+        Column('id', Integer, primary_key=True, autoincrement=True),
+        Column('job_name', String, nullable=False),
+        Column('run_datetime', TIMESTAMP, server_default=func.now()),
+        Column('status', String, nullable=False),
+        Column('details', String, nullable=True))
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
+    print(scheduler_logs_table)
+
+
+async def list_tables(db_url: str = 'sqlite+aiosqlite:///users_database.db') -> None:
+    engine = create_async_engine(db_url, echo=True)
+    async with engine.connect() as conn:
+        result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
+        tables = result.fetchall()
+        print("Tables in the database:")
+        for table in tables:
+            print(table[0])
+
+
+def scheduler_logs_dag() -> None:
+    """Test func to check scheduler table entries"""
+    import asyncio
+    from bot.db_requests import fetch_scheduler_logs
+    asyncio.run(fetch_scheduler_logs())
+
+
+if __name__ == "__main__":
+    scheduler_logs_dag()
