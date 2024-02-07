@@ -63,37 +63,52 @@ from bot.db_requests import set_requests_left, update_user_mode, log_input_image
 from typing import Dict, Any, Optional
 
 
-def load_target_names() -> Dict[str, Dict[str, Dict[str, str]]]:
+def get_yaml(filename='bot/contacts.yaml') -> Dict[str, str]:
+    """
+    Get info from a YAML file.
+
+    :return: A dictionary containing information.
+    """
+    with open(filename, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
+
+
+def get_localization(filename: str = 'localization.json', lang='ru') -> Dict[str, str]:
+    """
+    Get info from a json file.
+
+    :return: A dictionary containing information.
+    """
+    with open(filename, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    return config[lang]
+
+
+def load_target_names(lang: str = 'en') -> Dict[str, Dict[str, Dict[str, str]]]:
     """
     Load target names from a JSON file.
 
     :return: A dictionary containing target names.
     """
-    with open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '\\target_images.json', 'r') as file:
+    with open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + f'\\target_images_{lang}.json',
+              'r', encoding='utf-8') as file:
         return json.load(file)
 
 
-def get_contacts() -> Dict[str, str]:
-    """
-    Get contacts from a YAML file.
-
-    :return: A dictionary containing contact information.
-    """
-    with open('bot/contacts.yaml', 'r') as f:
-        config = yaml.safe_load(f)
-    return config
-
-
 # Define constants
-TARGETS = load_target_names()
-PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
-CONTACTS: Dict[str, str] = get_contacts()
 
-FACE_EXTRACTION_URL = 'http://localhost:8000/swapper'
-TGBOT_PATH = 'https://api.telegram.org/file/bot'
-
-DELAY_BETWEEN_IMAGES = 2
 SENT_TIME = {}   # dictionary with user IDs and timestamps
+CONFIG = get_yaml('config.yaml')
+CONTACTS = get_yaml()
+FACE_EXTRACTION_URL = CONFIG['fastapi_swapper']
+TGBOT_PATH = CONFIG['bot_path']
+DELAY_BETWEEN_IMAGES = CONFIG['img_delay']
+LOCALIZATION = get_localization(lang=CONFIG['language'])
+
+TARGETS = load_target_names(CONFIG['language'])
+PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
+print(TARGETS)
 
 
 async def generate_filename(folder: str = 'original') -> str:
@@ -119,10 +134,7 @@ async def handle_start(message: Message) -> None:
     """
     await exist_user_check(message)
     limits = await fetch_user_by_id(message.from_user.id)
-    welcome = f"Welcome! Send me a photo of a person and I will return their face.\n\n" \
-              f"You have {limits.requests_left} free attempts today. Limits are updated daily\n" \
-              f"For video instruction visit:\nhttps://youtu.be/01Qah4aU_rE"
-
+    welcome = LOCALIZATION['welcome'].format(req=limits.requests_left)
     await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
     await handle_category_command(message)
 
@@ -138,7 +150,7 @@ async def handle_support(message: Message) -> None:
     m = message.from_user
     user = f'ids:{m.id} @{m.username} {m.url}\nname: {m.first_name} {m.last_name} {m.full_name}'
     await message.bot.send_message(CONTACTS['my_id'], f'User: {user} requires help')
-    await message.answer("Request has been sent to the administrator. You'll be contacted. Probably")
+    await message.answer(LOCALIZATION['support_request'])
 
 
 async def handle_contacts(message) -> None:
@@ -149,7 +161,7 @@ async def handle_contacts(message) -> None:
     :return: None
     """
     #                                          f"\nGithub: {CONTACTS['github']}\n")
-    await message.answer(f"Reach me out through:\nTelegram: @{CONTACTS['telegram']}")
+    await message.answer(LOCALIZATION['contact_me'].format(tg=CONTACTS['telegram']))
 
 
 async def donate_link(message) -> None:
@@ -159,8 +171,7 @@ async def donate_link(message) -> None:
     :param message: User data message.
     :return: None
     """
-    response_message = "Support me with BTC:"
-    await message.answer(response_message)
+    await message.answer(LOCALIZATION['donate'])
     await message.answer(CONTACTS['cryptohash'])
 
 
@@ -171,20 +182,7 @@ async def handle_help(message: Message) -> None:
     :param message: The user data message from the user.
     :return: None
     """
-    help_message = (
-        "This bot can only process photos that have people on it. Here are the available commands:\n"
-        "/start - Start the bot\n"
-        "/menu - Select a category of pictures\n"
-        "/status - Check your account limits\n"
-        "/target - Premium option to add your target image\n"
-        "/help - Display this help message\n"
-        "/reset_user - (Debug): Reset your status and set image limit to 10\n"
-        "/buy_premium - Add 100 images and set account to premium\n"
-        "/contacts - Show contacts list\n"
-        "/support - Send a support request\n"
-        "/donate - Support me\n"
-        "Send me a photo, and I'll process it!")
-    await message.answer(help_message)
+    await message.answer(LOCALIZATION['help_message'])
 
 
 async def save_img(img: bytes, img_path: str) -> None:
@@ -208,7 +206,7 @@ async def check_limit(user: Any, message: Message) -> bool:
     :return: True if the user has requests left, False otherwise.
     """
     if user.requests_left <= 0:
-        await message.answer("Sorry, you are out of attempts. Try again later")
+        await message.answer(LOCALIZATION['no_attempts'])
         return False
     return True
 
@@ -225,9 +223,7 @@ async def check_time_limit(user: Any, message: Message, n_time: int = 20) -> boo
     if user.status == 'premium':
         return True
     if (datetime.now() - user.last_photo_sent_timestamp) < timedelta(seconds=n_time):
-        secs = (datetime.now() - user.last_photo_sent_timestamp).total_seconds()
-        text = f"Sorry, too many requests. Please wait {n_time-int(secs)} more seconds"
-        await message.answer(text)
+        await message.answer(LOCALIZATION['too_fast'])
         return False
     return True
 
@@ -285,19 +281,18 @@ async def handle_image(message: Message, token: str) -> None:
             async with session.get(file_url) as response:
                 if response.status == 200:
                     print('Image downloaded')
-                    await message.answer('Image received. Processing...')
                     content = await response.read()
+                    await message.answer(LOCALIZATION['img_received'])
                     await save_img(content, input_path)
                     if await target_image_check(user, input_path):
-                        await message.answer(f'Target image uploaded. Uploads left: {user.targets_left-1}'
-                                             f'\nSend your source image')
+                        await message.answer(LOCALIZATION['target_uploaded'].format(left=user.targets_left-1))
                         await decrement_targets_left(user.user_id)  # due to async it does not keep up with m.answer
 
                         return
                 else:
                     error_message = await response.text()
                     print(error_message)
-                    await message.answer('Failed to download image. Please try again')
+                    await message.answer(LOCALIZATION['failed'])
                     return
 
             async with session.post(FACE_EXTRACTION_URL,
@@ -316,22 +311,22 @@ async def handle_image(message: Message, token: str) -> None:
                         if not (await check_limit(user, message)):
                             return
                         inp_file = FSInputFile(output_path)
-                        await message.answer_photo(photo=inp_file, caption=f'Swap faces at @{CONTACTS["botname"]}')
+                        await message.answer_photo(photo=inp_file,
+                                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['botname']))
                         print('Image sent')
 
                     await decrement_requests_left(user.user_id, n=len(image_paths))
                     limit = max(0, user.requests_left - len(image_paths))
-                    await message.answer(f'You have {limit} attempts left')
-
+                    await message.answer(LOCALIZATION['attempts_left'].format(limit=limit))
                 else:
                     error_message = await response.text()
                     print(error_message)
-                    await message.answer('Failed to process image. Please try again')
+                    await message.answer(LOCALIZATION)
                     return
 
     except Exception as e:
         print(e)    # TODO: log it
-        await message.answer('Sorry must have been an error. Try again later.')
+        await message.answer(LOCALIZATION['failed'])
 
 
 async def handle_text(message: Message) -> None:
@@ -343,11 +338,8 @@ async def handle_text(message: Message) -> None:
     """
     await exist_user_check(message)
     await log_text_data(message)
-    response_text = (
-        "I'm currently set up to process photos only. "
-        "Please send me a photo of a person, and I will return their face.")
     await fetch_user_data(message.from_user.id)
-    await message.answer(response_text)
+    await message.answer(LOCALIZATION['wrong_input'])
 
 
 async def handle_unsupported_content(message: Message) -> None:
@@ -357,8 +349,7 @@ async def handle_unsupported_content(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await message.answer("Sorry, I can't handle this type of content.\n"
-                         "Please send me a photo from your gallery, and I will return the face of a person on it.")
+    await message.answer(LOCALIZATION['wrong_input'])
 
 
 async def output_all_users_to_console(message) -> None:
@@ -382,8 +373,7 @@ async def set_user_to_premium(message: Message) -> None:
     await exist_user_check(message)
     await buy_premium(message.from_user.id)
     user = await fetch_user_data(message.from_user.id)
-    await message.answer(f'Congratulations! You got premium status!'
-                         f'\nYou have {user.requests_left} attempts left and {user.targets_left} custom target uploads')
+    await message.answer(LOCALIZATION['got_premium'].format(req=user.requests_left, targets=user.targets_left))
 
 
 async def reset_images_left(message: Message) -> None:
@@ -397,7 +387,7 @@ async def reset_images_left(message: Message) -> None:
     n = 10
     await set_requests_left(message.from_user.id, n)
     new_number = await fetch_user_data(message.from_user.id)
-    await message.answer(f'You have {new_number.requests_left} attempts left')
+    await message.answer(LOCALIZATION['attempts_left'].format(limit=new_number.requests_left))
 
 
 async def check_status(message: Message) -> None:
@@ -409,8 +399,9 @@ async def check_status(message: Message) -> None:
     """
     await exist_user_check(message)
     user = await fetch_user_data(message.from_user.id)
-    is_prem = 'left' if user.status == 'free' else f'with {user.targets_left} target uploads left'
-    await message.answer(f'Your have a {user.status} account\nToday you have {user.requests_left} attempts {is_prem}')
+    await message.answer(LOCALIZATION['status'].format(status=user.status,
+                                                       req=user.requests_left,
+                                                       is_prem=user.targets_left))
 
 
 async def target_image_check(user: Any, input_image: str) -> Optional[str]:
@@ -438,9 +429,9 @@ async def set_receive_flag(message: Message) -> None:
     user = await fetch_user_by_id(message.from_user.id)
     if user.status == 'premium' and user.targets_left > 0:
         await toggle_receive_target_flag(message.from_user.id, 1)
-        await message.answer('Changing set to receiving a new target.\nSend target image.')
+        await message.answer(LOCALIZATION['target_request'])
         return
-    await message.answer('You need to be a premium user with unspent uploads limit for that. Use /buy_premium function')
+    await message.answer(LOCALIZATION['not_premium'])
 
 
 async def handle_category_command(message: Message) -> None:
@@ -451,7 +442,7 @@ async def handle_category_command(message: Message) -> None:
     :return: None
     """
     keyboard = await create_category_buttons()
-    await message.answer("Choose your target category:", reply_markup=keyboard)
+    await message.answer(LOCALIZATION['category'], reply_markup=keyboard)
 
 
 async def create_category_buttons() -> InlineKeyboardMarkup:
@@ -496,10 +487,10 @@ async def show_images_for_category(query: CallbackQuery, category: str) -> None:
     await show_category_collage(query, category)
     buttons = [[InlineKeyboardButton(text=item["name"], callback_data=item['mode']) for item in chunk]
                for chunk in chunk_list(TARGETS['categories'].get(category, []), 2)]
-    back_button = InlineKeyboardButton(text="Back", callback_data="back")
+    back_button = InlineKeyboardButton(text=LOCALIZATION['button_back'], callback_data="back")
     buttons.append([back_button])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await query.message.edit_text(f"Choose an image from {category.title()}:", reply_markup=keyboard)
+    await query.message.edit_text(f"{LOCALIZATION['subcategory']} {category.title()}:", reply_markup=keyboard)
 
 
 def chunk_list(data: list, size: int):
@@ -525,7 +516,7 @@ async def process_image_selection(query: CallbackQuery) -> None:
     data = query.data
     await toggle_receive_target_flag(user_id)
     await update_user_mode(user_id, data)
-    await query.message.answer("Target image selected\nSend me a photo, and I'll process it!")
+    await query.message.answer(LOCALIZATION['selected'])
     await fetch_user_data(user_id)
     await query.answer()
 
@@ -555,7 +546,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
         if await prevent_multisending(message):
             await handle_image(message, bot_token)
             return
-        await message.answer("Please send one photo at a time.")
+        await message.answer(LOCALIZATION['too_fast'])
 
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
@@ -575,7 +566,7 @@ async def button_callback_handler(query: CallbackQuery) -> None:
         await show_images_for_category(query, category)
     elif query.data == 'back':
         keyboard = await create_category_buttons()
-        await query.message.edit_text("Choose your target category:", reply_markup=keyboard)
+        await query.message.edit_text(LOCALIZATION['category'], reply_markup=keyboard)
     else:
         await process_image_selection(query)
     await query.answer()

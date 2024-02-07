@@ -85,7 +85,7 @@ def load_target_names() -> Dict[str, str]:
 
     :return: A dictionary mapping modes to image file paths.
     """
-    with open(ROOTDIR + '\\target_images.json', 'r') as file:
+    with open(ROOTDIR + '\\target_images_en.json', 'r') as file:
         cats = json.load(file)
     modes_n_paths = {}
     for cat, items in cats['categories'].items():
@@ -165,7 +165,6 @@ async def select_target(mode: str) -> Tuple[str, Any]:
         target_path = mode
         result_img = cv2.imread(mode)
     return target_path, result_img
-
 
 
 async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.Image]]:
