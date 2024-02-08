@@ -464,12 +464,12 @@ async def format_userdata_output(user: User, messages: str) -> None:
         image_names = '\n\t\t\t'.join([f"original: {input_image} "
                                        f"output [{len(output_images.split(',')) if output_images else 0} img]:"
                                        f"{output_images})" for input_image, output_images in image_names_dict.items()])
-
+        n = sum([len(imgs.split(',')) if imgs else 0 for imgs in image_names_dict.values()])
         print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
               f"\n\tMode: {user.mode} Custom targets left: {True if user.receive_target_flag else False} "
               f"- {user.targets_left}"
               f"\n\tStatus: {user.status}"
-              f"\n\tImages total: {len(image_names_dict.values()) + len(image_names_dict.keys())}"
+              f"\n\tRequests total: {len(image_names_dict.keys())} + {n}"
               f" left: {user.requests_left}"
               f"\n\tMessages: [{messages}]"
               f"\n\tImages: [{image_names}]")

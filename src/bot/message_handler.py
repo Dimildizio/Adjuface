@@ -49,7 +49,6 @@ import io
 import json
 import random
 import os
-import yaml
 
 from datetime import datetime, timedelta
 from aiogram import F
@@ -60,44 +59,11 @@ from bot.db_requests import set_requests_left, update_user_mode, log_input_image
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp, fetch_user_by_id, \
                             toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id
-from typing import Dict, Any, Optional
-
-
-def get_yaml(filename='bot/contacts.yaml') -> Dict[str, str]:
-    """
-    Get info from a YAML file.
-
-    :return: A dictionary containing information.
-    """
-    with open(filename, 'r') as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-def get_localization(filename: str = 'localization.json', lang='ru') -> Dict[str, str]:
-    """
-    Get info from a json file.
-
-    :return: A dictionary containing information.
-    """
-    with open(filename, 'r', encoding='utf-8') as f:
-        config = json.load(f)
-    return config[lang]
-
-
-def load_target_names(lang: str = 'en') -> Dict[str, Dict[str, Dict[str, str]]]:
-    """
-    Load target names from a JSON file.
-
-    :return: A dictionary containing target names.
-    """
-    with open(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + f'\\target_images_{lang}.json',
-              'r', encoding='utf-8') as file:
-        return json.load(file)
+from typing import Any, Optional
+from utils import get_yaml, get_localization, load_target_names
 
 
 # Define constants
-
 SENT_TIME = {}   # dictionary with user IDs and timestamps
 CONFIG = get_yaml('config.yaml')
 CONTACTS = get_yaml()
