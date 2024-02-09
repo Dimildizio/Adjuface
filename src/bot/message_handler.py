@@ -45,22 +45,18 @@ Example:
 
 
 import aiohttp
-import io
 import json
-import random
-import os
 
 from datetime import datetime, timedelta
 from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from PIL import Image
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp, fetch_user_by_id, \
                             toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id
-from typing import Any, Optional
-from utils import get_yaml, get_localization, load_target_names
+from typing import Any, Tuple, List
+from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img
 
 
 # Define constants
@@ -75,19 +71,6 @@ LOCALIZATION = get_localization(lang=CONFIG['language'])
 TARGETS = load_target_names(CONFIG['language'])
 PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
 print(TARGETS)
-
-
-async def generate_filename(folder: str = 'original') -> str:
-    """
-    Asynchronously generates a unique filename for storing an image in a specified folder.
-
-    :param folder: The name of the folder within 'temp' (custom targets or original imgs) where the file will be stored.
-    :return: The absolute path to the generated filename.
-    """
-    while True:
-        filename = os.path.join('temp/'+folder, f'img_{random.randint(100, 999999)}.png')
-        if not os.path.exists(filename):
-            return os.path.join(os.getcwd(), filename)
 
 
 async def handle_start(message: Message) -> None:
@@ -151,18 +134,6 @@ async def handle_help(message: Message) -> None:
     await message.answer(LOCALIZATION['help_message'])
 
 
-async def save_img(img: bytes, img_path: str) -> None:
-    """
-    Saves an image from a byte stream to a specified path.
-
-    :param img: The image data in bytes.
-    :param img_path: The file path where the image will be saved.
-    :return: None
-    """
-    orig = Image.open(io.BytesIO(img))
-    orig.save(img_path, format='PNG')
-
-
 async def check_limit(user: Any, message: Message) -> bool:
     """
     Checks if the user has reached their request limit.
@@ -210,6 +181,173 @@ async def prevent_multisending(message: Message) -> bool:
     return False
 
 
+async def image_handler_checks(message: Message) -> Any:
+    """
+    Checks the user status and limits.
+
+    :param message: The message with user data.
+    :return: User data if checks pass, else None.
+    """
+    await exist_user_check(message)
+    user = await fetch_user_data(message.from_user.id)
+    if not (await check_limit(user, message) and await check_time_limit(user, message)):
+        return None
+    await update_photo_timestamp(user.user_id, datetime.now())
+    return user
+
+
+async def handle_image_constants(message: Message, token: str, user: Any) -> Tuple[str, str]:
+    """
+    Handles constants related to image processing.
+
+    :param message: The message with user data.
+    :param token: The Telegram bot token.
+    :param user: User data.
+    :return: File URL and input path.
+    """
+    file_path = await message.bot.get_file(message.photo[-1].file_id)
+    file_url = f"{TGBOT_PATH}{token}/{file_path.file_path}"
+    input_path = await generate_filename('target_images' if user.receive_target_flag else 'original')
+    await log_input_image_data(message, input_path)
+    return file_url, input_path
+
+
+async def handler_image_send(message: Message, output_paths: List) -> bool:
+    """
+    Handles sending processed images.
+
+    :param message: The message with user data.
+    :param output_paths: List of output image paths.
+    :return: True if successful, else False.
+    """
+    for output_path in output_paths:
+        user = await fetch_user_data(message.from_user.id)
+        if not (await check_limit(user, message)):
+            return False
+        inp_file = FSInputFile(output_path)
+        await message.answer_photo(photo=inp_file,
+                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['botname']))
+        print('Image sent')
+    return True
+
+
+async def image_handler_received_result(message: Message, user: Any, response: aiohttp.ClientResponse,
+                                        input_path: str) -> bool:
+    """
+    Handles the result of image processing when received successfully.
+
+    :param message: The message with user data.
+    :param user: User data.
+    :param response: The response from the processing request.
+    :param input_path: The input image path.
+    :return: True if successful, False otherwise.
+    """
+    image_paths = json.loads(await response.text())
+    await log_output_image_data(message, input_path, image_paths)  # logging to db
+    if not await handler_image_send(message, image_paths):
+        return False
+    await decrement_requests_left(user.user_id, n=len(image_paths))
+    await message.answer(LOCALIZATION['attempts_left'].format(
+                         limit=max(0, user.requests_left - len(image_paths))))
+    return True
+
+
+async def image_handler_result_failed(message: Message, response: aiohttp.ClientResponse) -> None:
+    """
+    Handles the case when the result of image processing failed.
+
+    :param message: The message with user data.
+    :param response: The response from the processing request.
+    :return: None
+    """
+    error_message = await response.text()
+    print(error_message)
+    await message.answer(LOCALIZATION)
+
+
+async def image_handler_swapper(message: Message, user: Any, session: aiohttp.ClientSession, input_path: str) -> bool:
+    """
+    Handles FASTAPI interaction for swapping of faces.
+
+    :param message: The message with user data.
+    :param user: User data.
+    :param session: The aiohttp client session.
+    :param input_path: The input image path.
+    :return: True if successful, False otherwise.
+    """
+    async with session.post(FACE_EXTRACTION_URL,
+                            data={'file_path': input_path, 'mode': user.mode}
+                            ) as response:
+
+        print('Sending image path through fastapi')
+        if response.status == 200:
+            if not await image_handler_received_result(message, user, response, input_path):
+                return False
+        else:
+            await image_handler_result_failed(message, response)
+        return True
+
+
+async def image_handler_load(message: Message, user: Any, response: aiohttp.ClientResponse, input_path: str) -> bool:
+    """
+    Handles downloading of images.
+
+    :param message: The message with user data.
+    :param user: User data.
+    :param response: The response from the download request.
+    :param input_path: The input image path.
+    :return: True if successful, False otherwise.
+    """
+    content = await response.read()
+    await message.answer(LOCALIZATION['img_received'])
+    await save_img(content, input_path)
+    print('Image downloaded')
+    return await target_image_check(message, user, input_path)
+
+
+async def image_handler_download_failed(message: Message, response: aiohttp.ClientResponse) -> None:
+    """
+    Handles the case when image download failed.
+
+    :param message: The message with user data.
+    :param response: The response from the download request.
+    :return: None
+    """
+    error_message = await response.text()
+    print(error_message)
+    await message.answer(LOCALIZATION['failed'])
+
+
+async def image_handler_logic(message, user, file_url, input_path):
+    """
+    Handles all image interaction logic
+
+    1. Downloads the image from Telegram using the provided bot token.
+    2. Generates an input file path and logs input image data.
+    3. Initiates processing of the image through FastAPI.
+    4. Handles various responses from the processing:
+       - If the image is successfully downloaded, it is saved, and target image checks are performed.
+       - If the processed image paths are received, they are logged and sent as photo messages to the user.
+       - Limits on user requests are updated and notifications are sent to the user.
+    5. In case of any exceptions or errors during the process, appropriate error messages are sent.
+
+    :param message: The message with user data.
+    :param user: User data.
+    :param file_url: The url to download a file from tg.
+    :param input_path: The input image path.
+    :return: None
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get(file_url) as response:
+            if response.status == 200:
+                if await image_handler_load(message, user, response, input_path):
+                    return
+            else:
+                await image_handler_download_failed(message, response)
+                return
+        await image_handler_swapper(message, user, session, input_path)
+
+
 async def handle_image(message: Message, token: str) -> None:
     """
     Handles image processing based on user requests.
@@ -217,79 +355,19 @@ async def handle_image(message: Message, token: str) -> None:
     This function processes an image received as a message and performs various actions based on user requests:
     1. Checks if the user exists and is within usage limits.
     2. Fetches user data and updates the timestamp for the last photo sent.
-    3. Downloads the image from Telegram using the provided bot token.
-    4. Generates an input file path and logs input image data.
-    5. Initiates processing of the image through FastAPI.
-    6. Handles various responses from the processing:
-       - If the image is successfully downloaded, it is saved, and target image checks are performed.
-       - If the processed image paths are received, they are logged and sent as photo messages to the user.
-       - Limits on user requests are updated and notifications are sent to the user.
-    7. In case of any exceptions or errors during the process, appropriate error messages are sent.
-    Note: TODO: split in several functions
+    3. If any error occurs - sends user a message.
 
     :param message: The message with user data.
     :param token: The Telegram bot token.
     :return: None
     """
-    await exist_user_check(message)
-    user = await fetch_user_data(message.from_user.id)
-    if not (await check_limit(user, message) and await check_time_limit(user, message)):
+
+    user = await image_handler_checks(message)
+    if not user:
         return
-    await update_photo_timestamp(user.user_id, datetime.now())
-
-    file_path = await message.bot.get_file(message.photo[-1].file_id)
-    file_url = f"{TGBOT_PATH}{token}/{file_path.file_path}"
-    input_path = await generate_filename('target_images' if user.receive_target_flag else 'original')
-    await log_input_image_data(message, input_path)
-
+    file_url, input_path = await handle_image_constants(message, token, user)
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(file_url) as response:
-                if response.status == 200:
-                    print('Image downloaded')
-                    content = await response.read()
-                    await message.answer(LOCALIZATION['img_received'])
-                    await save_img(content, input_path)
-                    if await target_image_check(user, input_path):
-                        await message.answer(LOCALIZATION['target_uploaded'].format(left=user.targets_left-1))
-                        await decrement_targets_left(user.user_id)  # due to async it does not keep up with m.answer
-
-                        return
-                else:
-                    error_message = await response.text()
-                    print(error_message)
-                    await message.answer(LOCALIZATION['failed'])
-                    return
-
-            async with session.post(FACE_EXTRACTION_URL,
-                                    data={'file_path': input_path,
-                                          'mode': user.mode}
-                                    ) as response:
-                print('Sending image path through fastapi')
-
-                if response.status == 200:
-                    image_data_list = await response.text()
-                    image_paths = json.loads(image_data_list)
-                    await log_output_image_data(message, input_path, image_paths)   # logging to db
-
-                    for output_path in image_paths:
-                        user = await fetch_user_data(message.from_user.id)
-                        if not (await check_limit(user, message)):
-                            return
-                        inp_file = FSInputFile(output_path)
-                        await message.answer_photo(photo=inp_file,
-                                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['botname']))
-                        print('Image sent')
-
-                    await decrement_requests_left(user.user_id, n=len(image_paths))
-                    limit = max(0, user.requests_left - len(image_paths))
-                    await message.answer(LOCALIZATION['attempts_left'].format(limit=limit))
-                else:
-                    error_message = await response.text()
-                    print(error_message)
-                    await message.answer(LOCALIZATION)
-                    return
-
+        await image_handler_logic(message, user, file_url, input_path)
     except Exception as e:
         print(e)    # TODO: log it
         await message.answer(LOCALIZATION['failed'])
@@ -370,10 +448,11 @@ async def check_status(message: Message) -> None:
                                                        is_prem=user.targets_left))
 
 
-async def target_image_check(user: Any, input_image: str) -> Optional[str]:
+async def target_image_check(message: Message, user: Any, input_image: str) -> bool:
     """
     Checks if the user is eligible to send a target image and updates user mode accordingly.
 
+    :param message: The message with user data.
     :param user: The user db object.
     :param input_image: The input image path.
     :return: The input image path if conditions are met, None otherwise.
@@ -381,7 +460,9 @@ async def target_image_check(user: Any, input_image: str) -> Optional[str]:
     if user.status == 'premium' and user.receive_target_flag and user.targets_left:
         await update_user_mode(user.user_id, input_image)
         await toggle_receive_target_flag(user.user_id)
-        return input_image
+        await message.answer(LOCALIZATION['target_uploaded'].format(left=user.targets_left - 1))
+        await decrement_targets_left(user.user_id)  # due to async it does not keep up with m.answer
+        return True
 
 
 async def set_receive_flag(message: Message) -> None:
@@ -457,18 +538,6 @@ async def show_images_for_category(query: CallbackQuery, category: str) -> None:
     buttons.append([back_button])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await query.message.edit_text(f"{LOCALIZATION['subcategory']} {category.title()}:", reply_markup=keyboard)
-
-
-def chunk_list(data: list, size: int):
-    """
-    Splits a list into chunks of a specified size.
-
-    :param data: The list to split into chunks.
-    :param size: The size of each chunk.
-    :return: A generator yielding chunks of the list.
-    """
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
 
 
 async def process_image_selection(query: CallbackQuery) -> None:

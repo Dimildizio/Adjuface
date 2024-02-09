@@ -1,8 +1,12 @@
+import io
 import os
-from datetime import datetime, timedelta
 import json
+import random
 import yaml
 
+
+from datetime import datetime, timedelta
+from PIL import Image
 from sqlalchemy import Table, Column, Integer, String, TIMESTAMP, MetaData, func, text
 from sqlalchemy.ext.asyncio import create_async_engine
 from typing import Tuple, Dict
@@ -116,6 +120,43 @@ def load_target_names(lang: str = 'en') -> Dict[str, Dict[str, Dict[str, str]]]:
     """
     with open(f'target_images_{lang}.json', 'r', encoding='utf-8') as file:
         return json.load(file)
+
+
+async def generate_filename(folder: str = 'original') -> str:
+    """
+    Asynchronously generates a unique filename for storing an image in a specified folder.
+
+    :param folder: The name of the folder within 'temp' (custom targets or original imgs) where the file will be stored.
+    :return: The absolute path to the generated filename.
+    """
+    while True:
+        filename = os.path.join('temp/'+folder, f'img_{random.randint(100, 999999)}.png')
+        if not os.path.exists(filename):
+            return os.path.join(os.getcwd(), filename)
+
+
+def chunk_list(data: list, size: int):
+    """
+    Splits a list into chunks of a specified size.
+
+    :param data: The list to split into chunks.
+    :param size: The size of each chunk.
+    :return: A generator yielding chunks of the list.
+    """
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+
+async def save_img(img: bytes, img_path: str) -> None:
+    """
+    Saves an image from a byte stream to a specified path.
+
+    :param img: The image data in bytes.
+    :param img_path: The file path where the image will be saved.
+    :return: None
+    """
+    orig = Image.open(io.BytesIO(img))
+    orig.save(img_path, format='PNG')
 
 
 if __name__ == "__main__":
