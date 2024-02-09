@@ -182,9 +182,9 @@ async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.I
     result_faces = []
     try:
         for num, face in enumerate(source_faces):
-            result_img = SWAPPER.get(result_img, target_face[0], face, paste_back=True)
-            await add_watermark_cv(result_img)
-            result_faces.append(Image.fromarray(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)))
+            new_result_img = SWAPPER.get(result_img, target_face[0], face, paste_back=True)
+            await add_watermark_cv(new_result_img)
+            result_faces.append(Image.fromarray(cv2.cvtColor(new_result_img, cv2.COLOR_BGR2RGB)))
     except Exception as e:
         print('EXCEPTION', e)
         return None
