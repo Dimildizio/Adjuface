@@ -81,7 +81,7 @@ async def handle_start(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     limits = await fetch_user_by_id(message.from_user.id)
     welcome = LOCALIZATION['welcome'].format(req=limits.requests_left)
     await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
@@ -188,7 +188,7 @@ async def image_handler_checks(message: Message) -> Any:
     :param message: The message with user data.
     :return: User data if checks pass, else None.
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     user = await fetch_user_data(message.from_user.id)
     if not (await check_limit(user, message) and await check_time_limit(user, message)):
         return None
@@ -380,7 +380,7 @@ async def handle_text(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     await log_text_data(message)
     await fetch_user_data(message.from_user.id)
     await message.answer(LOCALIZATION['wrong_input'])
@@ -407,17 +407,24 @@ async def output_all_users_to_console(message) -> None:
     await fetch_all_users_data()
 
 
-async def set_user_to_premium(message: Message) -> None:
+async def set_user_to_premium(query: CallbackQuery) -> None:
     """
     Sets a user to premium status and provides a response.
 
-    :param message: The message with user data.
+    :param query: The button callback with user data.
     :return: None
     """
-    await exist_user_check(message)
-    await buy_premium(message.from_user.id)
-    user = await fetch_user_data(message.from_user.id)
-    await message.answer(LOCALIZATION['got_premium'].format(req=user.requests_left, targets=user.targets_left))
+    await exist_user_check(query.from_user)
+    await buy_premium(query.from_user.id)
+    user = await fetch_user_data(query.from_user.id)
+    await query.message.answer(LOCALIZATION['got_premium'].format(req=user.requests_left, targets=user.targets_left))
+    await donate_link(query.message)
+
+
+async def premium_confirm(message):
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=LOCALIZATION['get_premium_button'],
+                                                                         callback_data="pay")]])
+    await message.answer(LOCALIZATION['pay'], reply_markup=markup)
 
 
 async def reset_images_left(message: Message) -> None:
@@ -427,7 +434,7 @@ async def reset_images_left(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     n = 10
     await set_requests_left(message.from_user.id, n)
     new_number = await fetch_user_data(message.from_user.id)
@@ -441,7 +448,7 @@ async def check_status(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     user = await fetch_user_data(message.from_user.id)
     await message.answer(LOCALIZATION['status'].format(status=user.status,
                                                        req=user.requests_left,
@@ -472,7 +479,7 @@ async def set_receive_flag(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     user = await fetch_user_by_id(message.from_user.id)
     if user.status == 'premium' and user.targets_left > 0:
         await toggle_receive_target_flag(message.from_user.id, 1)
@@ -546,6 +553,7 @@ async def process_image_selection(query: CallbackQuery) -> None:
 
     :param query: The callback query.
     :return: None
+
     """
     user_id = query.from_user.id
     data = query.data
@@ -570,7 +578,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(Command('support'))(handle_support)
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('target'))(set_receive_flag)
-    dp.message(Command('buy_premium'))(set_user_to_premium)
+    dp.message(Command('buy_premium'))(premium_confirm)
     dp.message(Command('reset_user'))(reset_images_left)
     dp.message(Command('status'))(check_status)
     dp.message(Command('donate'))(donate_link)
@@ -602,6 +610,8 @@ async def button_callback_handler(query: CallbackQuery) -> None:
     elif query.data == 'back':
         keyboard = await create_category_buttons()
         await query.message.edit_text(LOCALIZATION['category'], reply_markup=keyboard)
+    elif query.data == 'pay':
+        await set_user_to_premium(query)  # answer(LOCALIZATION['got_premium'])
     else:
         await process_image_selection(query)
     await query.answer()

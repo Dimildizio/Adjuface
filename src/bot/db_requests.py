@@ -362,18 +362,18 @@ async def update_image_entry(user_id: int, input_image_name: str, output_image_n
             await session.commit()
 
 
-async def exist_user_check(message: Any) -> None:
+async def exist_user_check(user: Any) -> None:
     """
     Check if a user exists and insert their information if not.
     Should be a wrapper but it throws coroutine TypeError
 
-    :param message: The user's aiogram Message object.
+    :param user: The user aiogram object.
     :return: None
     """
-    user_id = message.from_user.id
-    username = message.from_user.username or ''
-    first_name = message.from_user.first_name or ''
-    last_name = message.from_user.last_name or ''
+    user_id = user.id
+    username = user.username or ''
+    first_name = user.first_name or ''
+    last_name = user.last_name or ''
     await insert_user(user_id, username, first_name, last_name)
 
 
@@ -385,7 +385,7 @@ async def log_text_data(message: Any) -> None:
     :param message: The user's tg object.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     text = message.text.replace(' ', '_')
     await insert_message(message.from_user.id, text)
 
@@ -399,7 +399,7 @@ async def log_input_image_data(message: Any, input_image_name: str) -> None:
     :param input_image_name: The name of the input image.
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     await create_image_entry(message.from_user.id, input_image_name)
 
 
@@ -413,7 +413,7 @@ async def log_output_image_data(message: Any, input_image_name: str,
     :param output_image_names: The name(s) of the output image(s).
     :return: None
     """
-    await exist_user_check(message)
+    await exist_user_check(message.from_user)
     await update_image_entry(message.from_user.id, input_image_name, output_image_names)
 
 
