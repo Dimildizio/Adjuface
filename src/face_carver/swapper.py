@@ -119,7 +119,7 @@ def get_swapper() -> Any:
     return get_model('inswapper_128.onnx', download=False)
 
 
-async def load_face(swapp: FaceAnalysis, img_path: str) -> Any:
+async def load_face(swapp: FaceAnalysis, img_path: str) -> List:
     """
     Loads a face from an image file using a given FaceAnalysis object.
 
@@ -131,6 +131,16 @@ async def load_face(swapp: FaceAnalysis, img_path: str) -> Any:
     faces = swapp.get(read_img)
     return faces
 
+
+async def filter_largest_target(target_faces: List) -> Any:
+    """
+    Filters and returns the face with the largest bbox size
+
+    :param target_faces: List of face
+    :return: the largest face
+    """
+    box_size = lambda face: (face.bbox[2] - face.bbox[0]) * (face.bbox[3] - face.bbox[1])
+    return max(target_faces, key=box_size)
 
 async def add_watermark_cv(image: Any, watermark_text: str = WATERMARK) -> None:
     """
@@ -178,11 +188,15 @@ async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.I
     target_path, result_img = await select_target(mode)
     source_faces = await load_face(SWAPP, source_path)
     target_face = await load_face(SWAPP, target_path)
-
+    if len(mode) > 4:
+        target_face = await filter_largest_target(target_face)
+    else:
+        target_face = target_face[0]
     result_faces = []
     try:
+
         for num, face in enumerate(source_faces):
-            new_result_img = SWAPPER.get(result_img, target_face[0], face, paste_back=True)
+            new_result_img = SWAPPER.get(result_img, target_face, face, paste_back=True)
             await add_watermark_cv(new_result_img)
             result_faces.append(Image.fromarray(cv2.cvtColor(new_result_img, cv2.COLOR_BGR2RGB)))
     except Exception as e:
