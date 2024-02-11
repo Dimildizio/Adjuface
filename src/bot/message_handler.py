@@ -604,14 +604,45 @@ async def button_callback_handler(query: CallbackQuery) -> None:
     :param query: CallbackQuery.
     :return: None
     """
-    if query.data.startswith('c_'):  # Check if the callback data starts with 'c_'
-        category = query.data.split('_')[1]
-        await show_images_for_category(query, category)
-    elif query.data == 'back':
-        keyboard = await create_category_buttons()
-        await query.message.edit_text(LOCALIZATION['category'], reply_markup=keyboard)
-    elif query.data == 'pay':
-        await set_user_to_premium(query)  # answer(LOCALIZATION['got_premium'])
-    else:
-        await process_image_selection(query)
+    match query.data:
+        case data if data.startswith('c_'):  # Check if the callback data starts with 'c_'
+            category = data.split('_')[1]
+            await show_images_for_category(query, category)
+        case 'back':
+            keyboard = await create_category_buttons()
+            await query.message.edit_text(LOCALIZATION['category'], reply_markup=keyboard)
+        case 'pay':
+            await set_user_to_premium(query)  # answer(LOCALIZATION['got_premium'])
+        case _:
+            await process_image_selection(query)
     await query.answer()
+
+
+
+
+async def output_all_users_to_console(message) -> None:
+    """
+    Outputs all user data to the console. Cleans your own outputs since it's usually too long
+
+    :param message: Dummy args since Message will be sent by the message handler aiogram
+    :return: None
+    """
+    await clear_output_images_by_user_id(message.from_user.id)
+    await fetch_all_users_data()
+    await utility_func(message)
+
+
+
+async def utility_func(message: Message) -> None:
+    """
+    Dev func to do situational stuff to the user.
+
+    :param message: The message with user data.
+    :return: None
+    """
+    try:
+        print()
+        video_path = r''
+        await message.answer_video(FSInputFile(video_path))
+    except Exception as e:
+        print('Attention! We got an error!')
