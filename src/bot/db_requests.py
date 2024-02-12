@@ -26,8 +26,8 @@ Note: Before using this module, ensure the database file path and SQLAlchemy eng
 for your application's requirements. Also make sure all necessary config and yaml files are set on the root level.
 """
 
-from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, func, select, desc
+from datetime import datetime, timedelta, date
+from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, ForeignKey, func, select, desc
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import selectinload
@@ -39,7 +39,7 @@ Base = declarative_base()  # Class name after all
 DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
-
+PREMIUM_DAYS = 30
 
 # import logging # not working - still outputs INFO level
 # logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
@@ -60,6 +60,7 @@ class User(Base):
     requests_left = Column(Integer, default=10)
     targets_left = Column(Integer, default=0)
     last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
+    premium_expiration = Column(Date, nullable=True)
 
     messages = relationship("Message", back_populates="user")
     image_names = relationship("ImageName", back_populates="user")
@@ -178,8 +179,12 @@ async def insert_user(user_id: int, username: str, first_name: str, last_name: s
         async with session.begin():
             existing_user = await session.execute(select(User).filter_by(user_id=user_id))
             existing_user = existing_user.scalar_one_or_none()
-
+            # Avoid sql injection
+            username = username.replace(' ', '_')
+            first_name = first_name.replace(' ', '_')
+            last_name = last_name.replace(' ', '_')
             if existing_user is None:
+
                 user = User(user_id=user_id, username=username, first_name=first_name, last_name=last_name, mode=mode)
                 session.add(user)
             else:
@@ -260,6 +265,7 @@ async def set_requests_left(user_id: int, number: int = 10) -> None:
             user = user.scalar_one_or_none()
             if user:
                 user.status = 'free'
+                user.premium_expiration = None
                 user.targets_left = 0
                 user.requests_left = number
             await session.commit()
@@ -280,6 +286,7 @@ async def buy_premium(user_id: int) -> None:
                 user.requests_left += 100
                 user.targets_left += 10
                 user.status = "premium"
+                user.premium_expiration = datetime.now() + timedelta(days=PREMIUM_DAYS)  # 30 days for premium
             await session.commit()
 
 
@@ -467,7 +474,7 @@ async def format_userdata_output(user: User, messages: str) -> None:
         n = sum([len(imgs.split(',')) if imgs else 0 for imgs in image_names_dict.values()])
         print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
               f"\n\tMode: {user.mode} Custom targets left: {True if user.receive_target_flag else False} "
-              f"- {user.targets_left}"
+              f"- {user.targets_left} til {user.premium_expiration}"
               f"\n\tStatus: {user.status}"
               f"\n\tRequests total: {len(image_names_dict.keys())} + {n}"
               f" left: {user.requests_left}"
@@ -486,7 +493,8 @@ async def return_user(user: User) -> Dict[str, Union[int, str, bool, Column]]:
     """
     return {'user_id': user.user_id, 'username': user.username, 'first_name': user.first_name,
             'last_name': user.last_name, 'mode': user.mode, 'status': user.status,
-            'requests_left': user.requests_left, 'targets_left': user.targets_left}
+            'requests_left': user.requests_left, 'targets_left': user.targets_left,
+            'premium_expiration': {user.premium_expiration}}
 
 
 async def fetch_all_user_ids() -> List[int]:
@@ -581,6 +589,10 @@ async def update_user_quotas(free_requests: int = 10, premium_requests: int = 10
                         user.requests_left = premium_requests
                     if user.targets_left < targets:
                         user.targets_left = targets
+                    if user.premium_expiration and user.premium_expiration < date.today():
+                        user.status = 'free'
+                        user.premium_expiration = None
+
             await session.commit()
     await log_scheduler_run("update_user_quotas", "success", "Completed updating user quotas", td)
 

@@ -396,17 +396,6 @@ async def handle_unsupported_content(message: Message) -> None:
     await message.answer(LOCALIZATION['wrong_input'])
 
 
-async def output_all_users_to_console(message) -> None:
-    """
-    Outputs all user data to the console. Cleans your own outputs since it's usually too long
-
-    :param message: Dummy args since Message will be sent by the message handler aiogram
-    :return: None
-    """
-    await clear_output_images_by_user_id(message.from_user.id)
-    await fetch_all_users_data()
-
-
 async def set_user_to_premium(query: CallbackQuery) -> None:
     """
     Sets a user to premium status and provides a response.
@@ -417,7 +406,9 @@ async def set_user_to_premium(query: CallbackQuery) -> None:
     await exist_user_check(query.from_user)
     await buy_premium(query.from_user.id)
     user = await fetch_user_data(query.from_user.id)
-    await query.message.answer(LOCALIZATION['got_premium'].format(req=user.requests_left, targets=user.targets_left))
+    await query.message.answer(LOCALIZATION['got_premium'].format(req=user.requests_left,
+                                                                  targets=user.targets_left,
+                                                                  exp=user.premium_expiration))
     await donate_link(query.message)
 
 
@@ -450,7 +441,9 @@ async def check_status(message: Message) -> None:
     """
     await exist_user_check(message.from_user)
     user = await fetch_user_data(message.from_user.id)
+    expiration = user.premium_expiration or ' '
     await message.answer(LOCALIZATION['status'].format(status=user.status,
+                                                       exp=expiration,
                                                        req=user.requests_left,
                                                        is_prem=user.targets_left))
 
@@ -618,8 +611,6 @@ async def button_callback_handler(query: CallbackQuery) -> None:
     await query.answer()
 
 
-
-
 async def output_all_users_to_console(message) -> None:
     """
     Outputs all user data to the console. Cleans your own outputs since it's usually too long
@@ -632,7 +623,6 @@ async def output_all_users_to_console(message) -> None:
     await utility_func(message)
 
 
-
 async def utility_func(message: Message) -> None:
     """
     Dev func to do situational stuff to the user.
@@ -642,7 +632,7 @@ async def utility_func(message: Message) -> None:
     """
     try:
         print()
-        video_path = r''
-        await message.answer_video(FSInputFile(video_path))
+        send_path = r''
+        await message.answer_photo(FSInputFile(send_path))
     except Exception as e:
-        print('Attention! We got an error!')
+        print('Attention! We got an error!', e)
