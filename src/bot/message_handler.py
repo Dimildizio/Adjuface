@@ -35,7 +35,7 @@ Note:
   in face detection and swapping algorithms. Ensure that all dependencies are installed and the bot token is
   securely managed.
   - TODO: The file is too large. Refacrtoring required and splitting it into several smaller funcs and .py files
-  - TODO: add autodeletion of custom target, original and result files that are older than a day every midnight
+  - TODO: log time and delete from user filenames history adresses deleted files
 
 Example:
     Deploy the bot and interact with it through Telegram. Use commands like /start, /help, and /donate ;) to navigate
@@ -54,7 +54,8 @@ from aiogram.types import FSInputFile, Message, InlineKeyboardButton, InlineKeyb
 from bot.db_requests import set_requests_left, update_user_mode, log_input_image_data, exist_user_check, \
                             log_output_image_data, log_text_data, fetch_user_data, fetch_all_users_data, \
                             decrement_requests_left, buy_premium, update_photo_timestamp, fetch_user_by_id, \
-                            toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id
+                            toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id, \
+                            fetch_recent_errors, log_error
 from typing import Any, Tuple, List
 from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img
 
@@ -369,7 +370,8 @@ async def handle_image(message: Message, token: str) -> None:
     try:
         await image_handler_logic(message, user, file_url, input_path)
     except Exception as e:
-        print(e)    # TODO: log it
+        print(e)
+        await log_error(user.user_id, error_message=str(e), details=input_path)
         await message.answer(LOCALIZATION['failed'])
 
 
@@ -630,9 +632,26 @@ async def utility_func(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
+    await display_recent_errors()
     try:
         print()
         send_path = r''
         await message.answer_photo(FSInputFile(send_path))
     except Exception as e:
+        await log_error(message.from_user.id, error_message='UtilityFuncError:'+str(e))
         print('Attention! We got an error!', e)
+    await display_recent_errors()
+
+
+async def display_recent_errors():
+    recent_errors = await fetch_recent_errors(limit=5)  # Fetch the last 5 errors
+    if recent_errors:
+        print("Recent Errors:")
+        for error in recent_errors:
+            user_info = f"User ID: {error['user_id']}, Username: {error['username']}, Name: {error['first_name']} " \
+                        f"{error['last_name']}" if error['user_id'] else "User ID: None"
+            print(f"ID: {error['id']}, {user_info}, "
+                  f"Message: {error['error_message']}, Details: {error['details']}, "
+                  f"Timestamp: {error['timestamp']}")
+    else:
+        print("No recent errors found.")

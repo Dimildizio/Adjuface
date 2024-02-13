@@ -102,6 +102,65 @@ class SchedulerLog(Base):
                f"status='{self.status}', details='{self.details}')>"
 
 
+class ErrorLog(Base):
+    __tablename__ = 'error_logs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=True)
+    error_message = Column(String, nullable=False)
+    timestamp = Column(TIMESTAMP, server_default=func.now())
+    details = Column(String, nullable=True)
+
+
+async def log_error(user_id: Optional[int], error_message: str, details: Optional[str] = None) -> None:
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            error_log = ErrorLog(
+                user_id=user_id,
+                error_message=error_message,
+                details=details
+            )
+            session.add(error_log)
+            await session.commit()
+
+
+async def fetch_recent_errors(limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Fetch the most recent error logs.
+
+    :param limit: The number of recent error logs to fetch.
+    :return: A list of dictionaries, each representing an error log.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            result = await session.execute(
+                select(
+                    ErrorLog.id,
+                    ErrorLog.user_id,
+                    ErrorLog.error_message,
+                    ErrorLog.details,
+                    ErrorLog.timestamp,
+                    User.username,
+                    User.first_name,
+                    User.last_name)
+                .join(User, ErrorLog.user_id == User.user_id, isouter=True)
+                .order_by(ErrorLog.timestamp.desc())
+                .limit(limit)
+            )
+            error_logs = result.all()
+            recent_errors = [{
+                              "id": error_log.id,
+                              "user_id": error_log.user_id,
+                              "error_message": error_log.error_message,
+                              "details": error_log.details,
+                              "timestamp": error_log.timestamp,
+                              "username": error_log.username,
+                              "first_name": error_log.first_name,
+                              "last_name": error_log.last_name
+                             } for error_log in error_logs]
+            return recent_errors
+
+
 async def log_scheduler_run(job_name: str, status: str = "success", details: str = None, hour_delay: int = 24):
     """
     Logs a scheduler run if 24 hours have passed since the last run, or creates an entry if none exists.

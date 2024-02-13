@@ -44,7 +44,7 @@
     "pay": "The price of premium subscription is equal to one cup of coffee a month. Would you like to obtain it?",
     "get_premium_button": "Subscribe!",
     "got_premium": "Then go and get yourself a cup of coffee, premium is free for you til {exp}! Congratulations! You got premium status!'\nYou have {req} attempts left and {targets} custom target uploads.\nBut if you stil wish to support me:",
-    "status": "Your have a {status} account\nToday you have {req} attempts with {is_prem} target uploads left.",
+    "status": "Your have a {status} account {exp}\nToday you have {req} attempts with {is_prem} target uploads left.",
     "category": "Choose your target category:",
     "subcategory": "Choose an image from",
     "selected": "Target image selected\nSend me a photo, and I'll process it!",
