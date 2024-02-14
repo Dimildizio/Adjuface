@@ -56,7 +56,7 @@ from bot.db_requests import set_requests_left, update_user_mode, log_input_image
                             toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id, \
                             fetch_recent_errors, log_error
 from typing import Any, Tuple, List
-from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img
+from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img, backup_database
 
 
 # Define constants

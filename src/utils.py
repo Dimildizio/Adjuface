@@ -2,8 +2,8 @@ import io
 import os
 import json
 import random
+import shutil
 import yaml
-
 
 from datetime import datetime, timedelta
 from PIL import Image
@@ -157,6 +157,23 @@ async def save_img(img: bytes, img_path: str) -> None:
     """
     orig = Image.open(io.BytesIO(img))
     orig.save(img_path, format='PNG')
+
+
+async def backup_database(db: str = 'user_database.db', backup_dir: str = 'db_backups'):
+    """
+    Copies the user_database.db to a folder with the current date appended to the filename.
+    The filename includes the date in the format of year-month-day.
+
+    :param db: Source db filename.
+    :param backup_dir: Directory to save the db to.
+    :return: None
+    """
+
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    destination_db = os.path.join(backup_dir, f'{db[:-3]}_{date_str}.db')
+
+    shutil.copy2(db, destination_db)
+    print(f"Database backed up successfully to {destination_db}")
 
 
 if __name__ == "__main__":

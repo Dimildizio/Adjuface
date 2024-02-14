@@ -1,4 +1,5 @@
 /src/temp
+/src/db_backups
 /src/config.yaml
 /src/target_images_en.json
 /src/target_images_ru.json
