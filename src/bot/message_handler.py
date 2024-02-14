@@ -56,7 +56,7 @@ from bot.db_requests import set_requests_left, update_user_mode, log_input_image
                             toggle_receive_target_flag, decrement_targets_left, clear_output_images_by_user_id, \
                             fetch_recent_errors, log_error
 from typing import Any, Tuple, List
-from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img, backup_database
+from utils import get_yaml, get_localization, load_target_names, generate_filename, chunk_list, save_img
 
 
 # Define constants
@@ -70,7 +70,6 @@ LOCALIZATION = get_localization(lang=CONFIG['language'])
 
 TARGETS = load_target_names(CONFIG['language'])
 PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
-print(TARGETS)
 
 
 async def handle_start(message: Message) -> None:
@@ -482,6 +481,17 @@ async def set_receive_flag(message: Message) -> None:
     await message.answer(LOCALIZATION['not_premium'])
 
 
+async def output_all_users_to_console(message: Message) -> None:
+    """
+    Outputs all user data to the console. Cleans your own outputs since it's usually too long
+
+    :param message: Dummy args since Message will be sent by the message handler aiogram
+    :return: None
+    """
+    await clear_output_images_by_user_id(message.from_user.id)
+    await fetch_all_users_data()
+
+
 async def handle_category_command(message: Message) -> None:
     """
     Handles a command to choose a target category and displays the category buttons.
@@ -571,6 +581,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
     dp.message(Command('show_users'))(output_all_users_to_console)
+    dp.message(Command('util'))(utility_func)
     dp.message(Command('target'))(set_receive_flag)
     dp.message(Command('buy_premium'))(premium_confirm)
     dp.message(Command('reset_user'))(reset_images_left)
@@ -612,18 +623,6 @@ async def button_callback_handler(query: CallbackQuery) -> None:
     await query.answer()
 
 
-async def output_all_users_to_console(message) -> None:
-    """
-    Outputs all user data to the console. Cleans your own outputs since it's usually too long
-
-    :param message: Dummy args since Message will be sent by the message handler aiogram
-    :return: None
-    """
-    await clear_output_images_by_user_id(message.from_user.id)
-    await fetch_all_users_data()
-    #  await utility_func(message)
-
-
 async def utility_func(message: Message) -> None:
     """
     Dev func to do situational stuff to the user.
@@ -631,13 +630,13 @@ async def utility_func(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
-    await display_recent_errors()
     try:
-        print()
         send_path = r''
-        await message.answer_photo(FSInputFile(send_path))
+        print('Working on', send_path)
+        # await message.answer_video(FSInputFile(send_path))
+        # await message.answer_photo(FSInputFile(send_path))
     except Exception as e:
-        await log_error(message.from_user.id, error_message='UtilityFuncError:'+str(e))
+        await log_error(message.from_user.id, error_message='UtilityFuncError: '+str(e))
         print('Attention! We got an error!', e)
     await display_recent_errors()
 
