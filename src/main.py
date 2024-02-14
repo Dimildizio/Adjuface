@@ -4,7 +4,7 @@ import yaml
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.message_handler import setup_handlers
-from bot.db_requests import initialize_database, update_user_quotas, log_scheduler_run
+from bot.db_requests import initialize_database, update_user_quotas, log_scheduler_run, clear_outdated_images
 from utils import remove_old_image
 from typing import Any
 
@@ -49,8 +49,12 @@ def list_all_loggers() -> None:
 
 
 async def remove_imgs_log() -> None:
+    td = 24
     await remove_old_image()
-    await log_scheduler_run("remove_old_image", "success", "Completed removing old images", 24)
+    await log_scheduler_run("remove_old_image", "success", "Completed removing old images", td)
+    await clear_outdated_images(td)
+    await log_scheduler_run("clear_outdated_images_for_all_users", "success",
+                            f"Completed clearing outdated images entry logs older than {td} hours", td)
 
 
 async def start_scheduler() -> None:

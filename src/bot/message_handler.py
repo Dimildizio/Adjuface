@@ -35,7 +35,6 @@ Note:
   in face detection and swapping algorithms. Ensure that all dependencies are installed and the bot token is
   securely managed.
   - TODO: The file is too large. Refacrtoring required and splitting it into several smaller funcs and .py files
-  - TODO: log time and delete from user filenames history adresses deleted files
 
 Example:
     Deploy the bot and interact with it through Telegram. Use commands like /start, /help, and /donate ;) to navigate
@@ -622,7 +621,7 @@ async def output_all_users_to_console(message) -> None:
     """
     await clear_output_images_by_user_id(message.from_user.id)
     await fetch_all_users_data()
-    await utility_func(message)
+    #  await utility_func(message)
 
 
 async def utility_func(message: Message) -> None:

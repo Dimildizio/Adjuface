@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import unittest
 
 
-DATABASE_FILE = '../../src/user_database.db'
+DATABASE_FILE = '../../src/research/db/user_database.db'
 DATABASE_TEST_FILE = f'sqlite:///{DATABASE_FILE}'
 
 
@@ -52,72 +52,41 @@ def add_premium_expiration_column():
     conn.close()
 
 
-class TestDatabaseMigration(unittest.TestCase):
+def add_timestamp_column_to_image_names():
+    """Function to add a timestamp column to the ImageName table."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
 
-    @classmethod
-    def setUpClass(cls):
-        """Class-level setup to run database migrations before any tests."""
-        # Migrate the database to include the error_logs table
-        migrate_errors_database(DATABASE_FILE)
-        # Add the premium_expiration column to users table if not exists
-        add_premium_expiration_column()
+    cursor.execute('ALTER TABLE image_names ADD COLUMN timestamp TIMESTAMP')
+    current_timestamp = datetime.now()
+    cursor.execute('''
+        UPDATE image_names
+        SET timestamp = ?
+    ''', (current_timestamp,))
+    conn.commit()
+    conn.close()
 
-    def setUp(self):
-        """Set up the test environment by connecting to the test database."""
-        self.engine = create_engine(DATABASE_TEST_FILE)
-        self.conn = sqlite3.connect(DATABASE_FILE)
-        self.cursor = self.conn.cursor()
 
-        # Ensure the test environment is clean and set up
-        self.add_sample_premium_users()
+def show_all_image_names():
+    """Fetch and print all ImageName instances using SQLite."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
 
-    def tearDown(self):
-        """Clean up the test environment."""
-        self.conn.close()
+    cursor.execute('SELECT * FROM image_names')
+    image_names = cursor.fetchall()
 
-    def add_sample_premium_users(self):
-        """Add sample premium users for testing."""
-        try:
-            self.cursor.execute('''
-                INSERT INTO users (username, first_name, last_name, status, premium_expiration)
-                VALUES ('testuser', 'Test', 'User', 'premium', ?)
-            ''', (datetime.now() + timedelta(days=30),))
-            self.conn.commit()
-        except sqlite3.IntegrityError:
-            pass  # User already exists or other constraint failed
+    for image_name in image_names:
+        print(f"ID: {image_name[0]}, User ID: {image_name[1]}, "
+              f"Input Image Name: '{image_name[2]}', "
+              f"Output Image Names: '{image_name[3]}', "
+              f"Timestamp: {image_name[4]}")
+    conn.close()
 
-    @staticmethod
-    def check_column_exists(engine, table_name, column_name):
-        """Check if a specific column exists in a given table."""
-        inspector = inspect(engine)
-        columns = [col['name'] for col in inspector.get_columns(table_name)]
-        return column_name in columns
-
-    def test_premium_expiration_column_exists(self):
-        """Test if the premium_expiration column exists in the users table."""
-        self.assertTrue(self.check_column_exists(self.engine, 'users', 'premium_expiration'))
-
-    def test_error_log_table_exists(self):
-        """Test if the error_logs table exists and has the correct structure."""
-        for column in ['id', 'user_id', 'error_message', 'details', 'timestamp']:
-            self.assertTrue(self.check_column_exists(self.engine, 'error_logs', column))
-
-    def test_insert_and_retrieve_error_log(self):
-        """Test inserting and retrieving an error log."""
-        self.cursor.execute("""
-            INSERT INTO error_logs (user_id, error_message, details)
-            VALUES (?, ?, ?)
-        """, (None, 'Test Error', 'Details of the test error'))
-        self.conn.commit()
-
-        self.cursor.execute("SELECT * FROM error_logs WHERE error_message = ?", ('Test Error',))
-        error_log = self.cursor.fetchone()
-        self.assertIsNotNone(error_log)
-        self.assertEqual('Test Error', error_log[2])
-        self.assertEqual('Details of the test error', error_log[3])
 
 
 if __name__ == '__main__':
+    add_timestamp_column_to_image_names()
+    show_all_image_names()
     # add_premium_expiration_column()
-    unittest.main()
+    #unittest.main()
     # migrate_errors_database(DATABASE_FILE)

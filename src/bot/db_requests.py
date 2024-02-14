@@ -27,12 +27,11 @@ for your application's requirements. Also make sure all necessary config and yam
 """
 
 from datetime import datetime, timedelta, date
-from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, ForeignKey, func, select, desc
+from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, ForeignKey, func, select, desc, delete
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Dict, Optional, List, Any, Union
-
 
 # Set  credentials and run DB
 Base = declarative_base()  # Class name after all
@@ -40,6 +39,7 @@ DATABASE_FILE = 'user_database.db'
 ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
 PREMIUM_DAYS = 30
+
 
 # import logging # not working - still outputs INFO level
 # logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
@@ -84,6 +84,7 @@ class ImageName(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     input_image_name = Column(String)
     output_image_names = Column(String)
+    timestamp = Column(TIMESTAMP, default=datetime.now())
 
     user = relationship("User", back_populates="image_names")
 
@@ -149,15 +150,15 @@ async def fetch_recent_errors(limit: int = 10) -> List[Dict[str, Any]]:
             )
             error_logs = result.all()
             recent_errors = [{
-                              "id": error_log.id,
-                              "user_id": error_log.user_id,
-                              "error_message": error_log.error_message,
-                              "details": error_log.details,
-                              "timestamp": error_log.timestamp,
-                              "username": error_log.username,
-                              "first_name": error_log.first_name,
-                              "last_name": error_log.last_name
-                             } for error_log in error_logs]
+                "id": error_log.id,
+                "user_id": error_log.user_id,
+                "error_message": error_log.error_message,
+                "details": error_log.details,
+                "timestamp": error_log.timestamp,
+                "username": error_log.username,
+                "first_name": error_log.first_name,
+                "last_name": error_log.last_name
+            } for error_log in error_logs]
             return recent_errors
 
 
@@ -195,24 +196,38 @@ async def log_scheduler_run(job_name: str, status: str = "success", details: str
             await fetch_scheduler_logs(job_name)
 
 
-async def clear_output_images_by_user_id(user_id: int) -> None:
+async def clear_output_images_by_user_id(user_id: int, hour_delay: int = 24) -> None:
     """
     Clears (deletes) output image names associated with a given user ID.
 
     :param user_id: The Telegram ID of the user whose output images are to be cleared.
+    :param hour_delay: How often should the data be cleaned.
+    :return: None
+    """
+    cutoff_time = datetime.now() - timedelta(hours=hour_delay)
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            await session.execute(
+                delete(ImageName)
+                .where(ImageName.user_id == user_id, ImageName.timestamp < cutoff_time)
+            )
+            await session.commit()
+
+
+async def clear_outdated_images(hour_delay: int = 24):
+    """
+    Clears outdated output images for all users in the database.
+
+    :param hour_delay: The age threshold in hours for an image to be considered outdated.
     :return: None
     """
     async with AsyncSession(async_engine) as session:
         async with session.begin():
-            image_name_records = await session.execute(
-                select(ImageName).filter_by(user_id=user_id)
-            )
-            image_names = image_name_records.scalars().all()
-
-            for image_name in image_names:
-                image_name.output_image_names = ''
-                image_name.input_image_name = ''
-            await session.commit()
+            result = await session.execute(select(User.user_id))
+            user_ids = result.scalars().all()
+    for user_id in user_ids:
+        await clear_output_images_by_user_id(user_id, hour_delay)
+        print(f"Cleared outdated images for user ID: {user_id}")
 
 
 async def initialize_database() -> None:
@@ -368,7 +383,7 @@ async def insert_message(user_id: int, text_data: str) -> None:
             await session.commit()
 
 
-async def fetch_image_names_by_user_id(user_id: int) -> Dict[str, Optional[str]]:
+async def fetch_image_names_by_user_id(user_id: int) -> Dict[str, Any]:
     """
     Fetch image names associated with a user by their user ID.
 
@@ -384,7 +399,9 @@ async def fetch_image_names_by_user_id(user_id: int) -> Dict[str, Optional[str]]
         image_name_dict = {}
         if image_names:
             for image_name in image_names:
-                image_name_dict[image_name.input_image_name] = image_name.output_image_names
+                image_name_dict[image_name.input_image_name] = {
+                    "output_image_names": image_name.output_image_names,
+                    "timestamp": image_name.timestamp.strftime('%Y-%m-%d')}
         return image_name_dict
 
 
@@ -401,7 +418,8 @@ async def create_image_entry(user_id: int, input_image_name: str) -> None:
             # Create a new entry in ImageName table
             new_entry = ImageName(user_id=user_id,
                                   input_image_name=input_image_name,
-                                  output_image_names=None)
+                                  output_image_names=None,
+                                  timestamp=datetime.now())
             session.add(new_entry)
             await session.commit()
 
@@ -423,6 +441,7 @@ async def update_image_entry(user_id: int, input_image_name: str, output_image_n
             str_outputs = ','.join(output_image_names) if output_image_names else None
             if existing_entry:
                 existing_entry.output_image_names = str_outputs
+                existing_entry.timestamp = datetime.now()
             else:
                 print("Entry not found for update.")
             await session.commit()
@@ -527,10 +546,13 @@ async def format_userdata_output(user: User, messages: str) -> None:
     """
     image_names_dict = await fetch_image_names_by_user_id(user.user_id)
     if image_names_dict:
-        image_names = '\n\t\t\t'.join([f"original: {input_image} "
-                                       f"output [{len(output_images.split(',')) if output_images else 0} img]:"
-                                       f"{output_images})" for input_image, output_images in image_names_dict.items()])
-        n = sum([len(imgs.split(',')) if imgs else 0 for imgs in image_names_dict.values()])
+        image_names = '\n\t\t\t'.join([f"original: {input_image} timestamp: {details['timestamp']}\n\t\t\t\t"
+                      f"output [{len(details['output_image_names'].split(',')) if details['output_image_names'] else 0}"
+                      f" img]: {details['output_image_names']})" for input_image, details in image_names_dict.items()])
+
+        n = sum([len(details['output_image_names'].split(','))
+                 if details['output_image_names'] else 0 for details in image_names_dict.values()])
+
         print(f"\nUser: {user.username} (ID:{user.user_id} Name: {user.first_name} {user.last_name})"
               f"\n\tMode: {user.mode} Custom targets left: {True if user.receive_target_flag else False} "
               f"- {user.targets_left} til {user.premium_expiration}"
@@ -626,7 +648,7 @@ async def fetch_user_by_id(user_id: int) -> Optional[User]:
 
 
 async def update_user_quotas(free_requests: int = 10, premium_requests: int = 100,
-                             targets: int = 10, td: int = 24) -> None:
+                             targets: int = 10, td: int = 48) -> None:
     """
     Update user quotas based on their status.
 
@@ -667,7 +689,7 @@ async def fetch_scheduler_logs(job_name: str = None):
         async with session.begin():
             if job_name:
                 query = select(SchedulerLog).where(SchedulerLog.job_name == job_name).order_by(
-                        SchedulerLog.run_datetime.desc())
+                    SchedulerLog.run_datetime.desc())
             else:
                 query = select(SchedulerLog).order_by(SchedulerLog.run_datetime.desc())
             result = await session.execute(query)

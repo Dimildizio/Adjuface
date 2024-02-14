@@ -5,6 +5,7 @@
 /src/user_database.db
 /src/bot/contacts.yaml
 /src/face_carver/inswapper_128.onnx
+/research/db/db_backup
 /research/face_extraction/models
 /research/face_extraction/seg_models
 /research/gans/models/variables/variables.data-00000-of-00001

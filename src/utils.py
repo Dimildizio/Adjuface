@@ -35,7 +35,7 @@ def list_project_structure(path: str, to_ignore: Tuple[str, ...] = ('temp', '__p
 
 
 async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\target_images'),
-                           hour_delay: int = 24, name_start: str = 'img'):
+                           hour_delay: int = 48, name_start: str = 'img'):
     """
     Removes images that are older than a specified time delay and start with a specified name from a folders.
 
