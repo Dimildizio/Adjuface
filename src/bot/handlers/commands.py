@@ -1,11 +1,47 @@
+"""
+This module contains the implementation of command handlers for a Telegram bot designed for face swapping
+and other image manipulation tasks. Utilizing the Aiogram library, it defines functions that respond to specific
+commands issued by users, enabling interactions such as starting the bot, requesting help, managing user account
+settings, and initiating image processing requests.
+
+Key Features:
+- Command Handling: Implements functions to respond to Telegram commands like /start, /help, /donate, etc.
+- User Interaction: Facilitates direct interactions with users through informative messages and prompts for input,
+  enhancing the bot's usability and engagement.
+- Premium Features Management: Provides mechanisms for users to access and manage premium features,
+  including custom target uploads and extended processing capabilities.
+- Image Processing Initiation: Triggers the face swapping process based on user commands, supporting both
+  automated target selection and user-defined targets for premium accounts.
+
+Usage:
+- Handlers defined in this module should be registered with an Aiogram Dispatcher in the bot's main.py setup file,
+  allowing them to respond to user commands.
+- This module works in conjunction with other parts of the bot's architecture, such as utilities for image processing,
+  user data management, and asynchronous task handling, to provide a cohesive user experience.
+
+Dependencies:
+- Aiogram: For defining and managing Telegram bot command handlers.
+- Bot-specific utilities and services: For tasks like image processing, user data management, and interaction logging.
+
+Configuration:
+- Before deployment, ensure that all necessary configurations, such as db, command keywords and premium feature
+  settings, are correctly defined and integrated with the bot's overall functionality.
+
+Example:
+- A user sends the /start command to the bot. This module processes the command and responds with a welcome message
+  and instructions for using the bot's features.
+"""
+
+
 from aiogram.types import Message, CallbackQuery
-from bot.handlers.checks import image_handler_checks
-from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES
-from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection
-from bot.handlers.image_utils import handle_image_constants, image_handler_logic
 from bot.db_requests import exist_user_check, fetch_user_by_id, log_text_data, fetch_user_data, set_requests_left, \
                             toggle_receive_target_flag, clear_output_images_by_user_id, fetch_all_users_data, \
                             log_error, buy_premium
+from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection
+from bot.handlers.checks import image_handler_checks
+from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES
+from bot.handlers.image_utils import handle_image_constants, image_handler_logic
+
 
 async def handle_start(message: Message) -> None:
     """

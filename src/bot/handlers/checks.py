@@ -1,3 +1,28 @@
+"""
+This module contains utility functions and checks that support the bot's operations by managing rate limiting,
+verifying user permissions for certain actions, and handling common tasks like updating user statuses or logging errors.
+
+Key Functionalities:
+- Rate limiting to prevent spamming and ensure fair resource usage among users.
+- Checks for user's request limits and time constraints to manage access to the bot's image processing features.
+- Utility functions for common tasks such as toggling user flags, updating modes, and decrementing available requests.
+- Error logging and display functionalities to assist in monitoring and troubleshooting the bot's operations.
+
+Usage:
+- These utility functions are invoked across various parts of the bot's workflow, particularly in handling
+  commands, processing images, and responding to callback queries. They ensure that user interactions are
+  managed smoothly and within defined operational parameters.
+
+Example:
+- Before processing an image request, `check_limit` and `check_time_limit` are used to verify that the user
+  has not exceeded their allowed number of requests or is sending requests too frequently.
+
+Dependencies:
+- Application-specific database request functions: For querying and updating user data.
+- Localization and constants: For accessing predefined messages and configuration settings.
+"""
+
+
 from aiogram.types import Message
 from datetime import datetime, timedelta
 from typing import Any

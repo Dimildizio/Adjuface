@@ -1,3 +1,32 @@
+"""
+This module provides the core functionalities for handling image processing requests within the Telegram bot.
+It encompasses the steps from receiving an image from the user, preparing it for processing, interacting with
+the FastAPI-based face swapping service, and managing the response, including saving and sending the processed
+images back to the user.
+
+Key Functionalities:
+- Preparation of images for processing, including fetching the image from Telegram and generating file paths.
+- Sending image processing requests to the FastAPI service and handling the responses.
+- Downloading and saving processed images, then sending them back to the users with appropriate captions.
+- Error handling for failed image processing or download attempts, ensuring users are informed of issues.
+
+Usage:
+- Functions in this module are designed to be called during the bot's handling of user-submitted images for
+  face swapping. They manage the technical aspects of image processing, from initial receipt to final presentation
+  of the swapped images.
+
+Example:
+- Upon receiving a photo submission, the bot calls `handle_image_constants` to prepare the image, followed by
+  `image_handler_logic` to manage the processing workflow, which may involve `image_handler_swapper` for sending
+  the image to the processing service and `handler_image_send` for presenting the results to the user.
+
+Dependencies:
+- aiohttp: For asynchronous HTTP requests to the image processing service.
+- Aiogram: For interactions with Telegram's API, including fetching images and sending messages or photos.
+- Application-specific utilities: For generating filenames, saving images locally, and accessing bot settings.
+"""
+
+
 import aiohttp
 import json
 
@@ -5,10 +34,10 @@ from aiogram.types import Message, FSInputFile
 from typing import Any, Tuple, List
 
 from utils import generate_filename, save_img
-from bot.handlers.constants import TGBOT_PATH, LOCALIZATION, CONTACTS, FACE_EXTRACTION_URL
-from bot.handlers.checks import check_limit, target_image_check
 from bot.db_requests import log_input_image_data, log_output_image_data, fetch_user_data, decrement_requests_left, \
                             log_error
+from bot.handlers.checks import check_limit, target_image_check
+from bot.handlers.constants import TGBOT_PATH, LOCALIZATION, CONTACTS, FACE_EXTRACTION_URL
 
 
 async def handle_image_constants(message: Message, token: str, user: Any) -> Tuple[str, str]:

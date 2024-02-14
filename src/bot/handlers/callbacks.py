@@ -1,3 +1,32 @@
+"""
+This module focuses on handling callback queries from inline keyboard interactions within the Telegram bot.
+It includes functionalities for dynamically creating category selection buttons, displaying image collages
+for selected categories, processing user selections for custom target images, and confirming premium feature
+subscriptions.
+
+Key Functionalities:
+- Dynamic creation of inline keyboard buttons for navigating through face swapping categories.
+- Display of preloaded image collages corresponding to user-selected categories to guide their choices.
+- Processing of user selections for custom target images, facilitating personalized face swapping experiences.
+- Confirmation of premium subscriptions, enabling users to access enhanced features of the bot.
+
+Usage:
+- The functions within this module are intended to be used with main.py and commands.py as callback query handlers.
+- They are invoked in response to user interactions with inline keyboards presented by the bot during various stages
+  of the face swapping process.
+
+Example:
+- When a user selects a category from the bot's menu, `show_category_collage` is called to display a collage of
+  target faces from that category. Users can then make further selections or confirm actions, triggering other
+  handlers like `process_image_selection` or `premium_confirm`.
+
+Dependencies:
+- Aiogram: For creating and managing the Telegram bot's callback queries.
+- Application-specific utilities and constants: For accessing preloaded images, localization strings,
+  and other bot settings.
+"""
+
+
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from bot.db_requests import toggle_receive_target_flag, update_user_mode, fetch_user_data
 from bot.handlers.constants import PRELOADED_COLLAGES, TARGETS, LOCALIZATION

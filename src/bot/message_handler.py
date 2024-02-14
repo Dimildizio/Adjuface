@@ -1,44 +1,31 @@
 """
-This module, leveraging the asyncio library, FastAPI, Aiogram, and various image processing libraries,
-offers a sophisticated face-swapping bot capable of handling image-based requests via a Telegram bot interface.
-The bot utilizes advanced face detection and swapping algorithms to process user-submitted photos, enabling the dynamic
-replacement of faces in images with those from a predefined set of target images or user-provided content for
-premium accounts.
+This module serves as the central hub for dispatching incoming Telegram messages to their respective handlers.
+It leverages the Aiogram library to efficiently manage and route user messages, including commands, text inputs,
+and multimedia content, to the appropriate functionalities within the bot's architecture.
 
-Key Features:
-- Asynchronous handling of image processing and Telegram bot interactions for efficient operation under load.
-- Integration with FastAPI for serving a REST API that facilitates face extraction and swapping operations.
-- Utilization of the Aiogram library for Telegram bot development, supporting commands, text, and photo messages.
-- Preloading of target images and categories from JSON, allowing for easy extension of the bot's capabilities.
-- Support for premium user features, including custom target face uploads and increased processing limits.
-- Implementation of rate limiting and request tracking to manage demand and ensure equitable resource usage.
-- Provision of user support and contact information through the bot interface, enhancing user engagement.
+Purpose:
+- To act as the primary interface between the Telegram API and the bot's internal logic.
+- To classify and route messages based on their content type (e.g., commands, photos, text) and context.
+
+Key Responsibilities:
+- Registering command handlers and callback query handlers from the `commands.py` module.
+- Initiating the bot's response to non-command messages, such as direct text inputs or photo submissions,
+  by invoking the relevant processing functions.
+- Implementing filters and checks to manage the flow of incoming messages and ensure they are handled appropriately,
+  including rate limiting and content validation.
 
 Usage:
-- Deploy the bot and interact with it via Telegram. Users can send commands to start interactions, upload photos for
-  face swapping, or inquire about their usage limits. Premium features are unlocked through specific commands.
-
-Dependencies:
-- aiohttp: For asynchronous HTTP requests within the face-swapping REST API.
-- Pillow (PIL): For image manipulation tasks, including reading, writing, and transforming images.
-- Aiogram: For creating and managing the Telegram bot interface, handling user commands, and processing messages.
-- YAML: For loading configuration data, such as contact information.
-- OpenCV (cv2): Optionally used for additional image processing capabilities.
-
-
-Configuration:
-- Before deployment, configure the database, target images, categories, and contact information in JSON and YAML files.
-  Adjust the REST API endpoint as needed to match the deployment environment.
-
-Note:
-- This module is designed to be modular and extensible, allowing for the addition of new features and improvements
-  in face detection and swapping algorithms. Ensure that all dependencies are installed and the bot token is
-  securely managed.
+- This module is intended to be used as part of the bot's startup process, which is in main.py with handlers for
+different types of Telegram messages and actions.
+- Handlers defined in `commands.py` and other modules are imported and registered with the `Dispatcher` here.
 
 Example:
-    Deploy the bot and interact with it through Telegram. Use commands like /start, /help, and /donate ;) to navigate
-    the bot's features. Send a photo to the bot, and it will process it according to the selected target face or
-    category.
+- Upon receiving a message, this module determines the appropriate action, such as processing an image submitted by the
+user, and routes the message to the corresponding function for handling.
+
+Note:
+- This module focuses on message dispatching and routing. Specific command implementations and business logic are
+  contained in `commands.py` and other dedicated modules, keeping the bot's architecture modular and maintainable.
 """
 
 
@@ -46,12 +33,13 @@ from aiogram import F
 from aiogram.filters.command import Command
 from aiogram.types import Message
 from typing import Any
-from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_unsupported_content, \
-                                  output_all_users_to_console, set_receive_flag, check_status, handle_text, \
-                                  reset_images_left, donate_link, handle_category_command, button_callback_handler, \
-                                  handle_image
+
 from bot.handlers.callbacks import premium_confirm
 from bot.handlers.checks import prevent_multisending, utility_func
+from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_image, \
+                                  output_all_users_to_console, set_receive_flag, check_status, handle_text, \
+                                  reset_images_left, donate_link, handle_category_command, button_callback_handler, \
+                                  handle_unsupported_content
 from bot.handlers.constants import LOCALIZATION
 
 
