@@ -24,6 +24,8 @@ when called.
 
 Note: Before using this module, ensure the database file path and SQLAlchemy engine settings are correctly configured
 for your application's requirements. Also make sure all necessary config and yaml files are set on the root level.
+TODO: split file into several ones
+TODO: implement multiple premium subs for one user with different expiration dates
 """
 
 from datetime import datetime, timedelta, date
@@ -61,6 +63,7 @@ class User(Base):
     targets_left = Column(Integer, default=0)
     last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
     premium_expiration = Column(Date, nullable=True)
+    # premium_purchases = Column(Integer, nullable=True)
 
     messages = relationship("Message", back_populates="user")
     image_names = relationship("ImageName", back_populates="user")
@@ -87,6 +90,18 @@ class ImageName(Base):
     timestamp = Column(TIMESTAMP, default=datetime.now())
 
     user = relationship("User", back_populates="image_names")
+
+
+class PremiumPurchase(Base):
+    __tablename__: str = 'premium_purchases'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    purchase_date = Column(Date, default=date.today)
+    expiration_date = Column(Date)
+    targets_increment = Column(Integer, default=10)
+    request_increment = Column(Integer, default=100)
+
+    user = relationship("User", back_populates='premium_purchases')
 
 
 class SchedulerLog(Base):
@@ -340,6 +355,7 @@ async def set_requests_left(user_id: int, number: int = 10) -> None:
             if user:
                 user.status = 'free'
                 user.premium_expiration = None
+                # user.premium_purchases = None
                 user.targets_left = 0
                 user.requests_left = number
             await session.commit()
@@ -356,7 +372,12 @@ async def buy_premium(user_id: int) -> None:
         async with session.begin():
             user = await session.execute(select(User).filter_by(user_id=user_id))
             user = user.scalar_one_or_none()
+            # new_premium = PremiumPurchase(user_id=user.user_id, purchase_date=date.today(),
+            #                              expiration_date=date.today()+timedelta(days=PREMIUM_DAYS))
+            # session.add(new_premium)
+
             if user:
+                user.premium_purchases = user.premium_purchases + 1 if user.status == 'premium' else 1
                 user.requests_left += 100
                 user.targets_left += 10
                 user.status = "premium"
@@ -667,12 +688,13 @@ async def update_user_quotas(free_requests: int = 10, premium_requests: int = 10
                     user.requests_left = free_requests
                 elif user.status == 'premium':
                     if user.requests_left < premium_requests:
-                        user.requests_left = premium_requests
+                        user.requests_left = premium_requests  # * user.premium_purchases
                     if user.targets_left < targets:
-                        user.targets_left = targets
+                        user.targets_left = targets  # * user.premium_purchases
                     if user.premium_expiration and user.premium_expiration < date.today():
                         user.status = 'free'
                         user.premium_expiration = None
+                        # user.premium_purchases = None
 
             await session.commit()
     await log_scheduler_run("update_user_quotas", "success", "Completed updating user quotas", td)
