@@ -25,7 +25,6 @@ when called.
 Note: Before using this module, ensure the database file path and SQLAlchemy engine settings are correctly configured
 for your application's requirements. Also make sure all necessary config and yaml files are set on the root level.
 TODO: split file into several ones
-TODO: implement multiple premium subs for one user with different expiration dates
 """
 
 from datetime import datetime, timedelta, date
@@ -318,7 +317,6 @@ async def decrement_requests_left(user_id: int, n: int = 1) -> None:
                     n = user.requests_left - n
                     user.requests_left = max(0, n)
                 else:
-                    user.status = 'free'
                     user.requests_left = 0
             await session.commit()
 
@@ -724,12 +722,14 @@ async def update_user_quotas(free_requests: int = 10, td: int = 48) -> None:
             users = users.scalars().all()
 
             for user in users:
+                await session.execute(delete(PremiumPurchase).where(
+                        (PremiumPurchase.user_id == user.user_id) &
+                        (PremiumPurchase.expiration_date < datetime.now().date())))
+
                 # Fetch all active premium purchases for the user
-                active_purchases = await session.execute(
-                    select(PremiumPurchase)
-                    .where(PremiumPurchase.user_id == user.user_id,
-                           PremiumPurchase.expiration_date >= datetime.now().date())
-                )
+                active_purchases = await session.execute(select(PremiumPurchase).where(
+                        PremiumPurchase.user_id == user.user_id,
+                        PremiumPurchase.expiration_date >= datetime.now().date()))
                 active_purchases = active_purchases.scalars().all()
 
                 if active_purchases:
@@ -745,7 +745,6 @@ async def update_user_quotas(free_requests: int = 10, td: int = 48) -> None:
                     user.status = 'free'
                     user.requests_left = free_requests
                     user.premium_expiration = None  # Clear the premium expiration date
-
             await session.commit()
     await log_scheduler_run("update_user_quotas", "success", "Completed updating user quotas", td)
 
@@ -801,3 +800,17 @@ async def add_premium_purchase_for_premium_users():
                     request_increment=100)
 
                 session.add(new_purchase)
+
+
+async def remove_expired_premium_purchases(user_id: int):
+    """
+    Remove expired PremiumPurchase entries for a specific user_id.
+
+    :param user_id: The ID of the user whose expired PremiumPurchases should be removed.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            await session.execute(delete(PremiumPurchase).where(
+                                                            (PremiumPurchase.user_id == user_id) &
+                                                            (PremiumPurchase.expiration_date < datetime.now().date())))
+            await session.commit()

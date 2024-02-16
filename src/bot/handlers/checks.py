@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from bot.db_requests import exist_user_check, fetch_user_data, update_photo_timestamp, toggle_receive_target_flag, \
-                           update_user_mode, decrement_targets_left, fetch_recent_errors, log_error
+                           update_user_mode, decrement_targets_left, fetch_recent_errors, log_error, fetch_scheduler_logs
 from bot.handlers.constants import LOCALIZATION, DELAY_BETWEEN_IMAGES
 
 
@@ -136,7 +136,7 @@ async def utility_func(message: Message) -> None:
     :return: None
     """
     try:
-
+        await fetch_scheduler_logs()
         send_path = r''
         print('Working on', send_path)
         # await message.answer_video(FSInputFile(send_path))
