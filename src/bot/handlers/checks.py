@@ -23,7 +23,7 @@ Dependencies:
 """
 
 
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -136,6 +136,7 @@ async def utility_func(message: Message) -> None:
     :return: None
     """
     try:
+
         send_path = r''
         print('Working on', send_path)
         # await message.answer_video(FSInputFile(send_path))

@@ -1,10 +1,10 @@
 import sqlite3
-from sqlalchemy import create_engine, inspect
+# from sqlalchemy import create_engine, inspect
 from datetime import datetime, timedelta
-import unittest
+# import unittest
 
 
-DATABASE_FILE = '../../src/research/db/user_database.db'
+DATABASE_FILE = '../../src/user_database.db'
 DATABASE_TEST_FILE = f'sqlite:///{DATABASE_FILE}'
 
 
@@ -52,6 +52,46 @@ def add_premium_expiration_column():
     conn.close()
 
 
+def add_premium_class():
+    """Migrates the database to include a PremiumPurchases table and initializes it based on existing premium users."""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Create the PremiumPurchases table for tracking multiple purchases
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS PremiumPurchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            purchase_date DATE NOT NULL,
+            expiration_date DATE NOT NULL,
+            targets_increment INTEGER DEFAULT 10,
+            requests_increment INTEGER DEFAULT 100,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # Fetch existing premium users along with their premium_expiration
+    cursor.execute('''
+        SELECT user_id, premium_expiration FROM users WHERE status = 'premium' AND premium_expiration IS NOT NULL
+    ''')
+    premium_users = cursor.fetchall()
+
+    for user_id, premium_expiration in premium_users:
+        # Use the existing premium_expiration date for the expiration_date in PremiumPurchases
+        # Assuming the purchase_date is 30 days before the expiration_date
+        expiration_date = datetime.strptime(premium_expiration, "%Y-%m-%d").date()
+        purchase_date = expiration_date - timedelta(days=30)
+
+        cursor.execute('''
+          INSERT INTO PremiumPurchases (user_id, purchase_date, expiration_date, targets_increment, requests_increment)
+          VALUES (?, ?, ?, 10, 100)
+        ''', (user_id, purchase_date, expiration_date))
+
+    conn.commit()
+    conn.close()
+    print("Database migration to include PremiumPurchases table completed.")
+
+
 def add_timestamp_column_to_image_names():
     """Function to add a timestamp column to the ImageName table."""
     conn = sqlite3.connect(DATABASE_FILE)
@@ -83,10 +123,11 @@ def show_all_image_names():
     conn.close()
 
 
-
 if __name__ == '__main__':
-    add_timestamp_column_to_image_names()
-    show_all_image_names()
+    print()
+    # add_timestamp_column_to_image_names()
+    # add_premium_class()
+    # show_all_image_names()
     # add_premium_expiration_column()
-    #unittest.main()
+    # unittest.main()
     # migrate_errors_database(DATABASE_FILE)
