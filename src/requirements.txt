@@ -1,7 +1,7 @@
 aiogram>=3.0
 aiohttp~=3.9.1
 apscheduler
-fastapi~=0.103.1
+fastapi>=0.109.1
 numpy >= 1.2
 httpx
 pillow >= 9.0
