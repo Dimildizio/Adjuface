@@ -78,8 +78,7 @@ async def show_images_for_category(query: CallbackQuery, category: str) -> None:
     back_button = InlineKeyboardButton(text=LOCALIZATION['button_back'], callback_data="back")
     buttons.append([back_button])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await query.message.edit_text(f"{LOCALIZATION['subcategory']} {category.title()}:", reply_markup=keyboard)
-
+    await query.message.answer(f"{LOCALIZATION['subcategory']} {category.title()}:", reply_markup=keyboard)
 
 async def process_image_selection(query: CallbackQuery) -> None:
     """
