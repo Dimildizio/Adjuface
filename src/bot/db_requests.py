@@ -33,19 +33,11 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Dict, Optional, List, Any, Union
+from bot.handlers.constants import HOUR_INTERVAL, PREMIUM_DAYS, DATEFORMAT, DATABASE_FILE, ASYNC_DB_URL
 
 # Set  credentials and run DB
 Base = declarative_base()  # Class name after all
-DATABASE_FILE = 'user_database.db'
-ASYNC_DB_URL = f'sqlite+aiosqlite:///{DATABASE_FILE}'
 async_engine = create_async_engine(ASYNC_DB_URL, echo=True)
-DATEFORMAT = '%Y-%m-%d'
-PREMIUM_DAYS = 30
-
-
-# import logging # not working - still outputs INFO level
-# logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-# logging.getLogger('sqlite').setLevel(logging.ERROR)
 
 
 class PremiumPurchase(Base):
@@ -177,14 +169,15 @@ async def fetch_recent_errors(limit: int = 10) -> List[Dict[str, Any]]:
             return recent_errors
 
 
-async def log_scheduler_run(job_name: str, status: str = "success", details: str = None, hour_delay: int = 24):
+async def log_scheduler_run(job_name: str, status: str = "success", details: str = None,
+                            hour_delay: int = HOUR_INTERVAL):
     """
-    Logs a scheduler run if 24 hours have passed since the last run, or creates an entry if none exists.
+    Logs a scheduler run if hour interval hours have passed since the last run, or creates an entry if none exists.
 
     :param job_name: The name of the job that was run.
     :param status: The status of the job run (default is 'success').
     :param details: Optional details about the job run.
-    :param hour_delay: The delay in hours to check against the last run time (default is 24 hours).
+    :param hour_delay: The delay in hours to check against the last run time (default is hour interval hours).
     :return: None
     """
     async with AsyncSession(async_engine) as session:
@@ -200,7 +193,7 @@ async def log_scheduler_run(job_name: str, status: str = "success", details: str
 
             now = datetime.now()
 
-            # If there's no last entry or 24 hours have passed since the last run, log a new entry
+            # If there's no last entry or hour interval hours have passed since the last run, log a new entry
             if not last_entry or now - last_entry.run_datetime >= timedelta(hours=hour_delay):
                 new_log = SchedulerLog(job_name=job_name, status=status, details=details)
                 session.add(new_log)
@@ -211,7 +204,7 @@ async def log_scheduler_run(job_name: str, status: str = "success", details: str
             await fetch_scheduler_logs(job_name)
 
 
-async def clear_output_images_by_user_id(user_id: int, hour_delay: int = 24) -> None:
+async def clear_output_images_by_user_id(user_id: int, hour_delay: int = HOUR_INTERVAL) -> None:
     """
     Clears (deletes) output image names associated with a given user ID.
 
@@ -229,7 +222,7 @@ async def clear_output_images_by_user_id(user_id: int, hour_delay: int = 24) -> 
             await session.commit()
 
 
-async def clear_outdated_images(hour_delay: int = 24):
+async def clear_outdated_images(hour_delay: int = HOUR_INTERVAL):
     """
     Clears outdated output images for all users in the database.
 
@@ -706,7 +699,7 @@ async def fetch_user_by_id(user_id: int) -> Optional[User]:
         return user
 
 
-async def update_user_quotas(free_requests: int = 10, td: int = 48) -> None:
+async def update_user_quotas(free_requests: int = 10, td: int = HOUR_INTERVAL) -> None:
     """
     Update user quotas based on their status.
 

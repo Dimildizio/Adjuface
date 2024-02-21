@@ -20,7 +20,16 @@ CONFIG = get_yaml('config.yaml')
 
 FACE_EXTRACTION_URL = CONFIG['fastapi_swapper']
 TGBOT_PATH = CONFIG['bot_path']
+
+DATABASE_FILE = CONFIG['db_name']
+ASYNC_DB_URL = f'{CONFIG["db_type"]}:///{DATABASE_FILE}'
+
 DELAY_BETWEEN_IMAGES = CONFIG['img_delay']
+
+HOUR_INTERVAL = CONFIG['hour_interval']
+PREMIUM_DAYS = CONFIG['premium_days']
+
+DATEFORMAT = '%Y-%m-%d'
 
 LOCALIZATION = get_localization(lang=CONFIG['language'])
 
