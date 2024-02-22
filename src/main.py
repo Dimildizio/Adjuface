@@ -4,7 +4,11 @@ import yaml
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bot.message_handler import setup_handlers
-from bot.db_requests import initialize_database, update_user_quotas, log_scheduler_run, clear_outdated_images
+#from bot.db_requests import initialize_database, update_user_quotas, log_scheduler_run, clear_outdated_images
+from bot.database.db_models import initialize_database
+from bot.database.db_updates import update_user_quotas
+from bot.database.db_images import clear_outdated_images
+from bot.database.db_logging import log_scheduler_run
 from utils import remove_old_image, backup_database
 from typing import Any
 

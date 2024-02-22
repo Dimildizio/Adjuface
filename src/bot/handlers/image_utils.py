@@ -32,10 +32,13 @@ import json
 
 from aiogram.types import Message, FSInputFile
 from typing import Any, Tuple, List
-
 from utils import generate_filename, save_img
-from bot.db_requests import log_input_image_data, log_output_image_data, fetch_user_data, decrement_requests_left, \
-                            log_error
+
+#from bot.db_requests import log_input_image_data, log_output_image_data, fetch_user_data, decrement_requests_left, \
+#                            log_error
+from bot.database.db_logging import log_input_image_data, log_output_image_data, log_error
+from bot.database.db_fetching import fetch_user_data
+from bot.database.db_users import decrement_requests_left
 from bot.handlers.checks import check_limit, target_image_check
 from bot.handlers.constants import TGBOT_PATH, LOCALIZATION, CONTACTS, FACE_EXTRACTION_URL
 

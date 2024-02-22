@@ -28,9 +28,11 @@ Dependencies:
 
 
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from bot.db_requests import toggle_receive_target_flag, update_user_mode, fetch_user_data
-from bot.handlers.constants import PRELOADED_COLLAGES, TARGETS, LOCALIZATION
 from utils import chunk_list
+
+from bot.database.db_fetching import fetch_user_data
+from bot.database.db_users import toggle_receive_target_flag, update_user_mode
+from bot.handlers.constants import PRELOADED_COLLAGES, TARGETS, LOCALIZATION
 
 
 async def create_category_buttons() -> InlineKeyboardMarkup:
@@ -79,6 +81,7 @@ async def show_images_for_category(query: CallbackQuery, category: str) -> None:
     buttons.append([back_button])
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await query.message.answer(f"{LOCALIZATION['subcategory']} {category.title()}:", reply_markup=keyboard)
+
 
 async def process_image_selection(query: CallbackQuery) -> None:
     """

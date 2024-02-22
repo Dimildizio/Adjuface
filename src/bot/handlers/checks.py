@@ -27,8 +27,13 @@ from aiogram.types import Message, FSInputFile
 from datetime import datetime, timedelta
 from typing import Any
 
-from bot.db_requests import exist_user_check, fetch_user_data, update_photo_timestamp, toggle_receive_target_flag, \
-                           update_user_mode, decrement_targets_left, fetch_recent_errors, log_error, fetch_scheduler_logs
+#from bot.db_requests import exist_user_check, fetch_user_data, update_photo_timestamp, toggle_receive_target_flag, \
+#                           update_user_mode, decrement_targets_left, fetch_recent_errors, log_error, fetch_scheduler_logs
+from bot.database.db_users import exist_user_check, toggle_receive_target_flag, update_user_mode, decrement_targets_left
+from bot.database.db_fetching import fetch_user_data, fetch_recent_errors, fetch_scheduler_logs
+from bot.database.db_updates import update_photo_timestamp
+from bot.database.db_logging import log_error
+
 from bot.handlers.constants import LOCALIZATION, DELAY_BETWEEN_IMAGES
 
 
