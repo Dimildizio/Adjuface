@@ -34,15 +34,11 @@ Example:
 
 
 from aiogram.types import Message, CallbackQuery
-#from bot.db_requests import exist_user_check, fetch_user_by_id, log_text_data, fetch_user_data, set_requests_left, \
-#                            toggle_receive_target_flag, clear_output_images_by_user_id, fetch_all_users_data, \
-#                            log_error, buy_premium
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
 from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data
 from bot.database.db_logging import log_error, log_text_data
 from bot.database.db_images import clear_output_images_by_user_id
-
 from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection
 from bot.handlers.checks import image_handler_checks
 from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES

@@ -15,6 +15,7 @@ Key Contents:
 from aiogram.types import FSInputFile
 from utils import get_yaml, load_target_names, get_localization
 
+
 CONTACTS = get_yaml()
 CONFIG = get_yaml('config.yaml')
 
