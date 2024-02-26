@@ -132,15 +132,20 @@ async def load_face(swapp: FaceAnalysis, img_path: str) -> List:
     return faces
 
 
-async def filter_largest_target(target_faces: List) -> Any:
+async def filter_multiple_targets(target_faces: List, n: int = 1) -> List:
     """
-    Filters and returns the face with the largest bbox size
+    Filters and returns the n faces with the largest bbox sizes.
 
-    :param target_faces: List of face
-    :return: the largest face
+    :param target_faces: List of detected faces.
+    :param n: number of faces to filter
+    :return: The n the largest faces.
     """
-    box_size = lambda face: (face.bbox[2] - face.bbox[0]) * (face.bbox[3] - face.bbox[1])
-    return max(target_faces, key=box_size)
+    if len(target_faces) <= n:
+        return target_faces
+    sorted_faces = sorted(target_faces, key=lambda face: (face.bbox[2] - face.bbox[0]) * (
+                                                          face.bbox[3] - face.bbox[1]), reverse=True)
+    return sorted_faces[:n]
+
 
 async def add_watermark_cv(image: Any, watermark_text: str = WATERMARK) -> None:
     """
@@ -177,6 +182,27 @@ async def select_target(mode: str) -> Tuple[str, Any]:
     return target_path, result_img
 
 
+async def swap_all_target(source_faces: List, result_img: Any, target_faces: List) -> List:
+    """
+    Swaps faces for a single target from multiple sorts creating different images
+
+    :param source_faces: Detected faces from user images
+    :param result_img: A copy of original target image
+    :param target_faces: A from the original target image
+    :returns: A list of n images (n = len(source_faces))
+    """
+    result_faces = []
+    for face in source_faces:
+        new_result_img = result_img.copy()
+        for t_face in target_faces:
+            new_result_img = SWAPPER.get(new_result_img, t_face, face, paste_back=True)
+        await add_watermark_cv(new_result_img)
+        result_faces.append(Image.fromarray(cv2.cvtColor(new_result_img, cv2.COLOR_BGR2RGB)))
+        #  if len(result_faces) > n:
+        #    break
+    return result_faces
+
+
 async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.Image]]:
     """
     Swaps faces between the source image and the target image specified by mode.
@@ -187,27 +213,22 @@ async def swap_faces(source_path: str, mode: str = '1') -> Optional[List[Image.I
     """
     target_path, result_img = await select_target(mode)
     source_faces = await load_face(SWAPP, source_path)
-    target_face = await load_face(SWAPP, target_path)
-    if len(mode) > 4:
-        target_face = await filter_largest_target(target_face)
-    else:
-        target_face = target_face[0]
-    result_faces = []
+    target_faces = await load_face(SWAPP, target_path)
+    if len(mode) > 4:  # max classes num is 100 longer mode name means custom target
+        target_faces = await filter_multiple_targets(target_faces, n=1)
     try:
-
-        for num, face in enumerate(source_faces):
-            new_result_img = SWAPPER.get(result_img, target_face, face, paste_back=True)
-            await add_watermark_cv(new_result_img)
-            result_faces.append(Image.fromarray(cv2.cvtColor(new_result_img, cv2.COLOR_BGR2RGB)))
+        if not target_faces or not source_faces:  # if no faces detected in target face
+            raise ValueError('No face detected in targets')
+        result_faces = await swap_all_target(source_faces, result_img, target_faces)
     except Exception as e:
-        print('EXCEPTION', e)
+        print(f'EXCEPTION {type(e).__name__}: {e}')
         return None
     return result_faces
 
 
 async def get_no_face(original_image_path: str) -> Image.Image:
     """
-    Creates an image with a text message "Чо с еблом?" when no face is detected in the original image.
+    Creates an image with a text message "Что с лицом?" when no face is detected in the original image.
     The size of the new image is the same as original image.
 
     :param original_image_path: Path to the original image that failed face detection.
