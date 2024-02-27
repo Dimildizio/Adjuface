@@ -39,5 +39,7 @@ TARGETS = load_target_names(CONFIG['language'])
 PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
 
 TTS_LINK = CONFIG['tts_link']
+STT_LINK = CONFIG['stt_link']
 TTS_AUTH = CONFIG['tts_auth']
 TTS_TOKEN = CONFIG['tts_token']
+TTS_AUDIO_SIZE = CONFIG['tts_audio_size']

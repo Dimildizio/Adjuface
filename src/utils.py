@@ -127,6 +127,8 @@ async def generate_filename(folder: str = 'original', filetype: str = 'img', ext
     Asynchronously generates a unique filename for storing an image in a specified folder.
 
     :param folder: The name of the folder within 'temp' (custom targets or original imgs) where the file will be stored.
+    :param filetype: name tag for further recognition by other functions
+    :param ext: specify extension
     :return: The absolute path to the generated filename.
     """
     while True:

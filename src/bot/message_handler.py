@@ -36,7 +36,7 @@ from typing import Any
 
 from bot.handlers.callbacks import premium_confirm
 from bot.handlers.checks import prevent_multisending, utility_func
-from bot.handlers.voices import handle_voice
+from bot.handlers.voices import handle_voice, handle_synt
 from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_image, \
                                   output_all_users_to_console, set_receive_flag, check_status, handle_text, \
                                   reset_images_left, donate_link, handle_category_command, button_callback_handler, \
@@ -80,7 +80,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
         await generic_handler(handle_image, message)
 
     dp.message(F.photo)(image_handler)
-    dp.message(F.text)(handle_text)
+    dp.message(F.text)(handle_synt)
     dp.message(F.voice)(voice_handler)
     dp.message(F.sticker | F.audio | F.video | F.document | F.location | F.poll |  F.contact | F.video_note)(
                handle_unsupported_content)
