@@ -36,6 +36,7 @@ from typing import Any
 
 from bot.handlers.callbacks import premium_confirm
 from bot.handlers.checks import prevent_multisending, utility_func
+from bot.handlers.voices import handle_voice
 from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_image, \
                                   output_all_users_to_console, set_receive_flag, check_status, handle_text, \
                                   reset_images_left, donate_link, handle_category_command, button_callback_handler, \
@@ -51,6 +52,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     :param bot_token: The Telegram bot token.
     :return: None
     """
+
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
@@ -65,13 +67,22 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(Command('menu'))(handle_category_command)
     dp.callback_query()(button_callback_handler)
 
-    async def image_handler(message: Message) -> None:
+    async def generic_handler(func, message: Message) -> None:
         if await prevent_multisending(message):
-            await handle_image(message, bot_token)
+            await func(message, bot_token)
             return
         await message.answer(LOCALIZATION['too_fast'])
 
+    async def voice_handler(message: Message) -> None:
+        await generic_handler(handle_voice, message)
+
+    async def image_handler(message: Message) -> None:
+        await generic_handler(handle_image, message)
+
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
-    dp.message(F.sticker | F.video | F.document | F.location | F.poll | F.audio | F.voice | F.contact | F.video_note)(
+    dp.message(F.voice)(voice_handler)
+    dp.message(F.sticker | F.audio | F.video | F.document | F.location | F.poll |  F.contact | F.video_note)(
                handle_unsupported_content)
+
+

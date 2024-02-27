@@ -21,6 +21,7 @@ CONFIG = get_yaml('config.yaml')
 
 FACE_EXTRACTION_URL = CONFIG['fastapi_swapper']
 TGBOT_PATH = CONFIG['bot_path']
+TGBOT_NAME = CONFIG['botname']
 
 DATABASE_FILE = CONFIG['db_name']
 ASYNC_DB_URL = f'{CONFIG["db_type"]}:///{DATABASE_FILE}'
@@ -36,3 +37,7 @@ LOCALIZATION = get_localization(lang=CONFIG['language'])
 
 TARGETS = load_target_names(CONFIG['language'])
 PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
+
+TTS_LINK = CONFIG['tts_link']
+TTS_AUTH = CONFIG['tts_auth']
+TTS_TOKEN = CONFIG['tts_token']
