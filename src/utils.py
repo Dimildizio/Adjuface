@@ -213,7 +213,7 @@ async def backup_database(db: str = 'user_database.db', backup_dir: str = 'db_ba
     print(f"Database backed up successfully to {destination_db}")
 
 
-async def get_pair(cur1, cur2, api_url):
+async def get_exchange_rate(cur1, cur2, api_url):
     async with aiohttp.ClientSession() as session:
         async with session.get(api_url) as response:
             if response.status == 200:
@@ -223,6 +223,38 @@ async def get_pair(cur1, cur2, api_url):
                 return f'{cur1}-{cur2}: {data}\n'
             else:
                 return f'Error fetching {cur1}-{cur2}: {response.status}'
+
+
+async def get_weather(url, weather_format):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                weather_data = await response.json()
+                return await format_weather_message(weather_data, weather_format)
+            else:
+                print(f"Error fetching weather data: {response.status}")
+                return None
+
+
+async def format_weather_message(weather, weather_format):
+    if not weather:
+        return "Unable to fetch weather data."
+
+    city_name = weather.get('name', 'Unknown')
+    temperature = weather['main'].get('temp', 'Unknown')
+    max_temp = weather['main'].get('temp_max', 'Unknown')
+    min_temp = weather['main'].get('temp_min', 'Unknown')
+    feels_like = weather['main'].get('feels_like', 'Unknown')
+    wind_speed = weather['wind'].get('speed', 'Unknown')
+    pressure = weather['main'].get('pressure', 'Unknown')
+    humidity = weather['main'].get('humidity', 'Unknown')
+    clouds = weather['clouds'].get('all', 'Unknown')
+    weather_desc = weather['weather'][0].get('description', 'Unknown')
+
+    message = weather_format.format(city_name=city_name, temperature=temperature, max_temp=max_temp, min_temp=min_temp,
+                                    feels_like=feels_like, wind_speed=wind_speed, pressure=pressure, humidity=humidity,
+                                    clouds=clouds, weather_desc=weather_desc)
+    return message
 
 
 if __name__ == "__main__":

@@ -23,8 +23,12 @@
     "subcategory": "Выберите изображение из",
     "selected": "Изображение выбрано. Пришлите мне фото для замены лиц!",
     "button_back": "Назад",
-    "morning": "Доброго времени суток!\nКурс валют на сегодня:\n"
+    "morning": "Доброго времени суток!\nКурс валют на сегодня:\n\n",
+    "weather_keyboard": "\nЧтоб узнать погоду поделитесь геолокацией:",
+    "weather_format": "Город {city_name}:\nТемпература: {temperature} °C\nОт: {max_temp} °C\nДо: {min_temp} °C\nОщущается как: {feels_like} °C\nСкорость ветра: {wind_speed} m/s\nДавление: {pressure}\nВлажность: {humidity}%\nОблачность: {clouds}%\nСейчас: {weather_desc}"
+
   },
+
 
   "en": {
     "welcome": "Welcome! Send me a photo of a person and I will return their face.\n\nYou have {req} free attempts today. Limits are updated daily\nFor video instruction visit:\nhttps://youtu.be/01Qah4aU_rE",
@@ -50,6 +54,8 @@
     "subcategory": "Choose an image from",
     "selected": "Target image selected\nSend me a photo, and I'll process it!",
     "button_back": "Back",
-    "morning": "Good Morning!\nExchange rates for today:\n"
+    "morning": "Good Morning!\nExchange rates for today:\n",
+    "weather_keyboard": "\nClick the button to share your location and get weather:",
+    "weather_format": "City {city_name}:\nTemperature: {temperature} °C\nMax temp: {max_temp} °C\nMin temp: {min_temp} °C\nFeels like: {feels_like} °C\nWind speed: {wind_speed} m/s\nPressure: {pressure}\nHumidity: {humidity}%\nOvercast: {clouds}%\nWeather now: {weather_desc}"
   }
 }

@@ -18,6 +18,7 @@ from utils import get_yaml, load_target_names, get_localization
 
 CONTACTS = get_yaml()
 CONFIG = get_yaml('config.yaml')
+LANGUAGE = CONFIG['language']
 
 FACE_EXTRACTION_URL = CONFIG['fastapi_swapper']
 TGBOT_PATH = CONFIG['bot_path']
@@ -33,9 +34,9 @@ PREMIUM_DAYS = CONFIG['premium_days']
 
 DATEFORMAT = '%Y-%m-%d'
 
-LOCALIZATION = get_localization(lang=CONFIG['language'])
+LOCALIZATION = get_localization(lang=LANGUAGE)
 
-TARGETS = load_target_names(CONFIG['language'])
+TARGETS = load_target_names(LANGUAGE)
 PRELOADED_COLLAGES = {category: FSInputFile(collage_path) for category, collage_path in TARGETS['collages'].items()}
 
 TTS_LINK = CONFIG['tts_link']
@@ -44,3 +45,5 @@ TTS_AUTH = CONFIG['tts_auth']
 TTS_TOKEN = CONFIG['tts_token']
 TTS_AUDIO_SIZE = CONFIG['tts_audio_size']
 CURRENCY_URL = CONFIG['currency_url']
+WEATHER_URL = CONFIG['weather_url']
+WEATHER_API = CONFIG['weather_api']

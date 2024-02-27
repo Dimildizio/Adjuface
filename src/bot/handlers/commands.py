@@ -43,9 +43,10 @@ from bot.handlers.callbacks import create_category_buttons, show_images_for_cate
                                    create_location_request_keyboard
 from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
-from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, CURRENCY_URL
+from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, \
+                                   CURRENCY_URL, WEATHER_URL, WEATHER_API
 from bot.handlers.image_utils import handle_image_constants, image_handler_logic
-from utils import get_pair
+from utils import get_exchange_rate, get_weather
 
 
 async def handle_start(message: Message) -> None:
@@ -67,24 +68,30 @@ async def handle_location(message: Message) -> None:
     """
     Handles the message containing the user's location.
     """
+    if not await is_premium(message):
+        return await handle_unsupported_content(message)
+    await message.answer('Погода:', reply_markup=ReplyKeyboardRemove())
     try:
         await message.delete()
     except RuntimeError as e:
         print(f"Error deleting message: {e}")
         await log_error(message.from_user.id, error_message=str(e))
-    latitude = message.location.latitude
-    longitude = message.location.longitude
-    await message.answer(f"\nYour location: \nLatitude {latitude}, \nLongitude {longitude}",
-                         reply_markup=ReplyKeyboardRemove())
+    url = WEATHER_URL.format(latitude=message.location.latitude, longitude=message.location.longitude,
+                             lang=LANGUAGE, api_key=WEATHER_API)
+    weather = await get_weather(url, LOCALIZATION['weather_format'])
+    await message.answer(weather)
 
 
 async def handle_hello(message: Message) -> None:
-    keyboard = await create_location_request_keyboard()
+    if not await is_premium(message):
+        return await handle_unsupported_content(message)
     result = LOCALIZATION['morning']
     for cur1, cur2 in (('btc', 'usd'), ('usd', 'rub'), ('cny', 'rub')):
-        cur = await get_pair(cur1, cur2, f'{CURRENCY_URL}{cur1}/{cur2}.json')
+        cur = await get_exchange_rate(cur1, cur2, f'{CURRENCY_URL}{cur1}/{cur2}.json')
         result = result + cur
-    await message.answer(result, reply_markup=keyboard)
+
+    keyboard = await create_location_request_keyboard()
+    await message.answer(result+LOCALIZATION['weather_keyboard'], reply_markup=keyboard)
 
 
 async def handle_support(message: Message) -> None:
