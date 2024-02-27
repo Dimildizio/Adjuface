@@ -33,14 +33,15 @@ Example:
 """
 
 
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
 from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data
 from bot.database.db_logging import log_error, log_text_data
 from bot.database.db_images import clear_output_images_by_user_id
 from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection
-from bot.handlers.checks import image_handler_checks
+from bot.handlers.checks import image_handler_checks, is_premium
+from bot.handlers.voices import synthesize_speech
 from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES
 from bot.handlers.image_utils import handle_image_constants, image_handler_logic
 
@@ -116,6 +117,8 @@ async def handle_text(message: Message) -> None:
     await exist_user_check(message.from_user)
     await log_text_data(message)
     await fetch_user_data(message.from_user.id)
+    if await is_premium(message):
+        return await handle_text_synt(message)
     await message.answer(LOCALIZATION['wrong_input'])
 
 
@@ -195,6 +198,11 @@ async def handle_category_command(message: Message) -> None:
     """
     keyboard = await create_category_buttons()
     await message.answer(LOCALIZATION['category'], reply_markup=keyboard)
+
+
+async def handle_text_synt(message):
+    address = await synthesize_speech(message.text)
+    await message.answer_audio(FSInputFile(address))
 
 
 async def handle_image(message: Message, token: str) -> None:

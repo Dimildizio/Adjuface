@@ -1,8 +1,10 @@
 import aiohttp
 import uuid
 import math
+import os
 
-from aiogram.types import Message, FSInputFile
+from aiofiles import open as aio_open
+from aiogram.types import Message
 from pydub import AudioSegment
 from typing import List
 
@@ -26,13 +28,13 @@ async def split_and_recognize(input_path):
     for chunk_path in chunks_paths:
         recognized_data = await recognize_speech(chunk_path)
         if recognized_data:
-            recognized_text = recognized_data.get("result", ["----Could not recognize----"])
-            recognized_emotion = recognized_data.get("emotions", ["----Could not recognize----"])
-            recognized_emotion = [',\n'.join([f"{key}: {round(value, 3)}" for key, value in recognized_emotion[0].items()])]
+            recognized_text = recognized_data.get("result", ["----Could not recognize text----"])
+            recognized_emotion = recognized_data.get("emotions", ["----Could not recognize emotions----"])
+            recognized_emotion = [',\n'.join([f"{key}: {round(value, 3)}"
+                                              for key, value in recognized_emotion[0].items()])]
             recognized_texts.extend(recognized_text)
             recognized_texts.extend(recognized_emotion)
-            # Clean up chunk file after processing
-            #os.remove(chunk_path)
+            os.remove(chunk_path)
             print(f'{chunk_path} recognized')
         else:
             print(f'we got problem {chunk_path}')
@@ -41,7 +43,6 @@ async def split_and_recognize(input_path):
 
 
 async def recognize_speech(input_path: str):
-    print('\n\nstart recognition\n\n')
     access_token = await get_api_access()
     headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'audio/ogg;codecs=opus'}
 
@@ -76,10 +77,10 @@ async def download_voice_file(message: Message, token: str):
                 return None
 
 
-async def respond_with_recognized_text(message: Message, recognized_texts: list) -> None:
+async def respond_with_recognized_text(message: Message, recognized_texts: List) -> None:
     if recognized_texts:
-        # Since recognized_texts is already a list of strings, we can directly join them.
-        result_text = recognized_texts#'\n\n'.join(recognized_texts)
+        #  Since recognized_texts is already a list of strings, we can directly join them.
+        result_text = recognized_texts  # '\n\n'.join(recognized_texts)
         result = await sign_text(result_text)
         print(f"Recognized text: {result}")
         await message.answer(result)
@@ -88,7 +89,7 @@ async def respond_with_recognized_text(message: Message, recognized_texts: list)
         await message.answer("Failed to recognize speech.")
 
 
-async def sign_text(text: str) -> str:
+async def sign_text(text: List) -> str:
     text = '\n\n'.join(text)
     return f'Текст вашего сообщения:\n\n{text}\n\nРаспознано с @{TGBOT_NAME}'.replace('. ', '.\n')
 
@@ -109,7 +110,7 @@ async def get_api_access() -> str:
                 raise ValueError(f"Failed to get access token, status code: {response.status}")
 
 
-async def split_file_by_size(input_path: str, chunk_length_ms:59000) -> List[str]:
+async def split_file_by_size(input_path: str, chunk_length_ms: int = 59000) -> List[str]:
     # Load the input audio file
     audio = AudioSegment.from_file(input_path)
 
@@ -123,3 +124,22 @@ async def split_file_by_size(input_path: str, chunk_length_ms:59000) -> List[str
         chunk.export(names[i], format="opus")
     return names
 
+
+async def synthesize_speech(text: str, voice: str = 'Bys_24000', ext: str = 'opus'):
+    access_token = await get_api_access()
+    headers = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/text'}
+    params = {'format': ext, 'voice': voice}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(TTS_LINK, headers=headers, params=params, data=text.encode('utf-8')) as response:
+            if response.status == 200:
+                output_path = await generate_filename('voice', 'audio', 'opus')
+                async with aio_open(output_path, 'wb') as audio_file:
+                    while True:
+                        chunk = await response.content.read(1024)
+                        if not chunk:
+                            break
+                        await audio_file.write(chunk)
+                return output_path
+            else:
+                return
