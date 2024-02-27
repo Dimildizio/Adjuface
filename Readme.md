@@ -1,6 +1,6 @@
 # Adjuface - Telegram Face Swapping Bot
 
-![Adjuface Logo](https://github.com/Dimildizio/Adjuface/assets/42382713/d28b12a8-ba56-4819-85e2-cdd5f562ae25)
+![Adjuface Logo](https://github.com/Dimildizio/Adjuface/assets/42382713/4880c3ac-296f-4612-a249-8eef73d69921)
 
 Adjuface is a Telegram bot that allows users to swap faces in images. With Adjuface, you can easily create humorous and creative images by swapping faces in photos. The bot is equipped with various features and capabilities to provide an enjoyable face-swapping experience.
 
