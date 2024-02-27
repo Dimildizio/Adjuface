@@ -130,7 +130,7 @@ async def display_recent_errors():
         print("No recent errors found.")
 
 
-async def is_premium(message):
+async def is_premium(message: Message) -> bool:
     """
     Sets the user to be able to send a new target image if they meet the criteria.
 

@@ -200,7 +200,13 @@ async def handle_category_command(message: Message) -> None:
     await message.answer(LOCALIZATION['category'], reply_markup=keyboard)
 
 
-async def handle_text_synt(message):
+async def handle_text_synt(message: Message) -> None:
+    """
+    Handles a message containing text by synthesizing speech and sending it as an audio reply.
+
+    :param message: The message containing the text to be synthesized.
+    :return: None
+    """
     address = await synthesize_speech(message.text)
     await message.answer_audio(FSInputFile(address))
 
