@@ -57,7 +57,7 @@ from typing import Any, Dict, List, Tuple, Optional
 
 # Define root dir and watermark
 ROOTDIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WATERMARK = '@dimildiziotrybot'
+WATERMARK = '@Adjuface_bot'
 
 # Run FastAPI application with middleware
 app = FastAPI()

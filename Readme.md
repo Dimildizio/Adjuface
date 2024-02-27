@@ -104,9 +104,9 @@ Adjuface supports various commands that users can send in their Telegram chats t
 - `/start`: Start the bot.
 - `/help`: Display help and available commands.
 - `/status`: Check your account limits.
-- `/select`: Select a category of pictures for face swapping.
+- `/menu`: Select a category of pictures for face swapping.
 - `/buy_premium`: Add 100 images and set your account to premium.
-- `/custom_target`: Premium option to add your custom target image.
+- `/target`: Premium option to add your custom target image.
 - `/contacts`: Show the bot owner's contacts from contacts.yaml
 - `/support`: Send a support request to the bot owner.
 - `/donate`: Support the bot owner.
@@ -117,7 +117,7 @@ To swap faces in an image, simply send a photo to the bot. If the image contains
 
 **Usecase**
 
-Here is an instruction to use [@dimildiziotrybot](https://t.me/dimildiziotrybot) TG bot
+Here is an instruction to use [@Adjuface_bot](https://t.me/Adjuface_bot) TG bot
 
 ![image](https://github.com/Dimildizio/Adjuface/assets/42382713/dcfd91f0-537d-4216-bb96-cdf5c38508d5)
 
