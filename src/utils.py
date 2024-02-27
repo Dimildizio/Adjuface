@@ -122,7 +122,7 @@ def load_target_names(lang: str = 'en') -> Dict[str, Dict[str, Dict[str, str]]]:
         return json.load(file)
 
 
-async def generate_filename(folder: str = 'original') -> str:
+async def generate_filename(folder: str = 'original', filetype: str = 'img', ext: str = 'png') -> str:
     """
     Asynchronously generates a unique filename for storing an image in a specified folder.
 
@@ -130,7 +130,7 @@ async def generate_filename(folder: str = 'original') -> str:
     :return: The absolute path to the generated filename.
     """
     while True:
-        filename = os.path.join('temp/'+folder, f'img_{random.randint(100, 999999)}.png')
+        filename = os.path.join('temp/'+folder, f'{filetype}_{random.randint(100, 999999)}.{ext}')
         if not os.path.exists(filename):
             return os.path.join(os.getcwd(), filename)
 
