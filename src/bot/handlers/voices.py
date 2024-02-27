@@ -1,3 +1,42 @@
+"""
+Module for handling voice-related functionalities including speech synthesis and recognition.
+
+This module provides functions to handle voice messages, including downloading, splitting, recognizing, and
+responding with recognized text.
+It also offers speech synthesis functionalities to convert text to speech using an API.
+
+Key Features:
+- Handling voice messages: Functions to download, split, recognize, and respond with recognized text from voice
+messages.
+- Speech synthesis: Functionality to convert text to speech using an API.
+
+Usage:
+- Use the `handle_voice` function to handle messages containing voice files. This function downloads the voice
+file, recognizes speech, and responds with the recognized text.
+- The `synthesize_speech` function can be used to synthesize speech from text. Specify the text, voice, and
+desired file extension.
+
+
+Functions:
+- handle_voice(message: Message, token: str): Handles a message containing a voice file by downloading,
+  recognizing, and responding with the recognized text.
+- split_and_recognize(input_path: str) -> List[str]: Splits the input audio file into chunks, recognizes
+  speech in each chunk, and returns a list of recognized texts.
+- recognize_speech(input_path: str) -> Optional[Dict[str, Any]]: Recognizes speech in the audio file located at
+  the given input path using an API.
+- download_voice_file(message: Message, token: str) -> Optional[str]: Downloads the voice file from the message
+  and saves it locally.
+- respond_with_recognized_text(message: Message, recognized_texts: List[str]) -> None: Responds to the message
+  with recognized text.
+- sign_text(text: List[str]) -> str: Signs the recognized text with additional information.
+- get_api_access() -> str: Retrieves the API access token for text-to-speech services.
+- split_file_by_size(input_path: str, chunk_length_ms: int = 59000) -> List[str]: Splits the input audio file
+  into chunks based on the specified chunk length.
+- synthesize_speech(text: str, voice: str = 'Bys_24000', ext: str = 'opus') -> Optional[str]: Synthesizes speech
+  from the given text using the specified voice and file extension.
+"""
+
+
 import aiohttp
 import uuid
 import math

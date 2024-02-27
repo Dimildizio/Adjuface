@@ -153,7 +153,7 @@ async def utility_func(message: Message) -> None:
     """
     try:
         await fetch_scheduler_logs()
-        send_path = r'C:\Users\tessa\Downloads\prog1.png'
+        send_path = r''
         print('Working on', send_path)
         # await message.answer_video(FSInputFile(send_path))
         # await message.answer_photo(FSInputFile(send_path))

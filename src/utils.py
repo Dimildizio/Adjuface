@@ -1,3 +1,38 @@
+"""
+Module for various utility functions.
+
+Key Features:
+- Listing project directory structure.
+- Removing old images from specified folders.
+- Adding a scheduler logs table to a database.
+- Listing tables in a database.
+- Getting information from YAML and JSON files.
+- Generating unique filenames for images.
+- Chunking a list into smaller chunks.
+- Saving images from byte streams to files.
+- Backing up a database.
+
+Usage:
+- Use the provided functions for various utility tasks like listing directory structures, managing images,
+  database operations, and file handling.
+
+Dependencies:
+- io: For handling byte streams.
+- os: For file and directory operations.
+- json: For JSON file handling.
+- random: For generating random numbers.
+- shutil: For file operations.
+- yaml: For YAML file handling.
+- datetime: For working with dates and times.
+- PIL: For image processing.
+- sqlalchemy: For database operations.
+- typing: For type annotations.
+
+Configuration:
+- Ensure that the required modules are installed and properly configured.
+"""
+
+
 import io
 import os
 import json
