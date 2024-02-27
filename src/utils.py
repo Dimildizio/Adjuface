@@ -32,7 +32,7 @@ Configuration:
 - Ensure that the required modules are installed and properly configured.
 """
 
-
+import aiohttp
 import io
 import os
 import json
@@ -211,6 +211,18 @@ async def backup_database(db: str = 'user_database.db', backup_dir: str = 'db_ba
 
     shutil.copy2(db, destination_db)
     print(f"Database backed up successfully to {destination_db}")
+
+
+async def get_pair(cur1, cur2, api_url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url) as response:
+            if response.status == 200:
+                data = await response.text(encoding='utf-8')
+                data = json.loads(data)
+                data = round(data[cur2], 2)
+                return f'{cur1}-{cur2}: {data}\n'
+            else:
+                return f'Error fetching {cur1}-{cur2}: {response.status}'
 
 
 if __name__ == "__main__":

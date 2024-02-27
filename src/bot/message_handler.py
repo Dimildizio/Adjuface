@@ -40,7 +40,7 @@ from bot.handlers.voices import handle_voice
 from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_image, \
                                   output_all_users_to_console, set_receive_flag, check_status, handle_text, \
                                   reset_images_left, donate_link, handle_category_command, button_callback_handler, \
-                                  handle_unsupported_content
+                                  handle_unsupported_content, handle_hello, handle_location
 from bot.handlers.constants import LOCALIZATION
 
 
@@ -57,6 +57,7 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
+    dp.message(Command('hello'))(handle_hello)
     dp.message(Command('show_users'))(output_all_users_to_console)
     dp.message(Command('util'))(utility_func)
     dp.message(Command('target'))(set_receive_flag)
@@ -82,5 +83,6 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     dp.message(F.photo)(image_handler)
     dp.message(F.text)(handle_text)
     dp.message(F.voice)(voice_handler)
-    dp.message(F.sticker | F.audio | F.video | F.document | F.location | F.poll | F.contact | F.video_note)(
+    dp.message(F.location)(handle_location)
+    dp.message(F.sticker | F.audio | F.video | F.document | F.poll | F.contact | F.video_note)(
                handle_unsupported_content)

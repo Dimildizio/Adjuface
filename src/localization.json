@@ -22,7 +22,8 @@
     "category": "Выберите категорию:",
     "subcategory": "Выберите изображение из",
     "selected": "Изображение выбрано. Пришлите мне фото для замены лиц!",
-    "button_back": "Назад"
+    "button_back": "Назад",
+    "morning": "Доброго времени суток!\nКурс валют на сегодня:\n"
   },
 
   "en": {
@@ -48,6 +49,7 @@
     "category": "Choose your target category:",
     "subcategory": "Choose an image from",
     "selected": "Target image selected\nSend me a photo, and I'll process it!",
-    "button_back": "Back"
+    "button_back": "Back",
+    "morning": "Good Morning!\nExchange rates for today:\n"
   }
 }

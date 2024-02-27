@@ -33,17 +33,19 @@ Example:
 """
 
 
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
 from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data
 from bot.database.db_logging import log_error, log_text_data
 from bot.database.db_images import clear_output_images_by_user_id
-from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection
+from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection, \
+                                   create_location_request_keyboard
 from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
-from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES
+from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, CURRENCY_URL
 from bot.handlers.image_utils import handle_image_constants, image_handler_logic
+from utils import get_pair
 
 
 async def handle_start(message: Message) -> None:
@@ -59,6 +61,30 @@ async def handle_start(message: Message) -> None:
     welcome = LOCALIZATION['welcome'].format(req=limits.requests_left)
     await message.answer_photo(photo=PRELOADED_COLLAGES['instruction'], caption=welcome)
     await handle_category_command(message)
+
+
+async def handle_location(message: Message) -> None:
+    """
+    Handles the message containing the user's location.
+    """
+    try:
+        await message.delete()
+    except RuntimeError as e:
+        print(f"Error deleting message: {e}")
+        await log_error(message.from_user.id, error_message=str(e))
+    latitude = message.location.latitude
+    longitude = message.location.longitude
+    await message.answer(f"\nYour location: \nLatitude {latitude}, \nLongitude {longitude}",
+                         reply_markup=ReplyKeyboardRemove())
+
+
+async def handle_hello(message: Message) -> None:
+    keyboard = await create_location_request_keyboard()
+    result = LOCALIZATION['morning']
+    for cur1, cur2 in (('btc', 'usd'), ('usd', 'rub'), ('cny', 'rub')):
+        cur = await get_pair(cur1, cur2, f'{CURRENCY_URL}{cur1}/{cur2}.json')
+        result = result + cur
+    await message.answer(result, reply_markup=keyboard)
 
 
 async def handle_support(message: Message) -> None:

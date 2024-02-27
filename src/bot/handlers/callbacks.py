@@ -27,7 +27,8 @@ Dependencies:
 """
 
 
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, KeyboardButton, \
+                          ReplyKeyboardMarkup
 from utils import chunk_list
 
 from bot.database.db_fetching import fetch_user_data
@@ -104,3 +105,13 @@ async def premium_confirm(message: Message) -> None:
     markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=LOCALIZATION['get_premium_button'],
                                                                          callback_data="pay")]])
     await message.answer(LOCALIZATION['pay'], reply_markup=markup)
+
+
+async def create_location_request_keyboard() -> ReplyKeyboardMarkup:
+    """
+    Creates a custom keyboard with a button to request location.
+    """
+    location_button = KeyboardButton(text='Share location', request_location=True)
+    keyboard_layout = [[location_button]]
+    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_layout, resize_keyboard=True, one_time_keyboard=True)
+    return keyboard
