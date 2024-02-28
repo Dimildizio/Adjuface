@@ -34,8 +34,9 @@ Configuration:
 
 import aiohttp
 import io
-import os
 import json
+import logging
+import os
 import random
 import shutil
 import yaml
@@ -69,7 +70,7 @@ def list_project_structure(path: str, to_ignore: Tuple[str, ...] = ('temp', '__p
             print(' ' * indent + '-' + file_name)
 
 
-async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\target_images'),
+async def remove_old_files(paths=('temp\\result', 'temp\\original', 'temp\\target_images'),
                            hour_delay: int = 48, name_start: str = 'img'):
     """
     Removes images that are older than a specified time delay and start with a specified name from a folders.
@@ -89,6 +90,23 @@ async def remove_old_image(paths=('temp\\result', 'temp\\original', 'temp\\targe
                 if now - file_creation_time > time_threshold:
                     os.remove(file_path)
                     print(f"Deleted: {file_path} - {file_creation_time}")
+
+
+def list_all_loggers() -> None:
+    """
+    Initializes the database asynchronously.
+
+    :return: None
+    """
+    # logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.ERROR)
+    root_logger = logging.getLogger('')
+    loggers = [root_logger] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    logger_info = {}
+    for logger in loggers:
+        if 'sqlalchemy' in logger.name:
+            logger.setLevel(logging.ERROR)
+        logger_info[logger.name] = logger.getEffectiveLevel()
+
 
 
 async def add_scheduler_logs_table() -> None:

@@ -1,9 +1,8 @@
 import asyncio
-import logging
 import yaml
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from utils import remove_old_image, backup_database
+from utils import remove_old_files, backup_database, list_all_loggers
 from typing import Any
 
 from bot.database.db_models import initialize_database
@@ -13,16 +12,16 @@ from bot.database.db_logging import log_scheduler_run
 from bot.message_handler import setup_handlers
 
 
-async def main(dp: Any, iobot: Any) -> None:
+async def main(dp: Any, io_bot: Any) -> None:
     """
     Starts the polling process for the bot.
 
     :param dp: Dispatcher for handling updates.
-    :param iobot: The IO-bound operations bot.
+    :param io_bot: The IO-bound operations bot.
     :return: None
     """
     setup_handlers(dp, get_token())
-    await dp.start_polling(iobot)
+    await dp.start_polling(io_bot)
 
 
 def get_token() -> str:
@@ -36,26 +35,13 @@ def get_token() -> str:
     return config['token']
 
 
-def list_all_loggers() -> None:
-    """
-    Initializes the database asynchronously.
+async def remove_files_log(td: int = 24) -> None:
+    await remove_old_files()
+    await log_scheduler_run("remove_old_file", "success", "Completed removing old images", td)
 
-    :return: None
-    """
-    # logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.ERROR)
-    root_logger = logging.getLogger('')
-    loggers = [root_logger] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    logger_info = {}
-    for logger in loggers:
-        if 'sqlalchemy' in logger.name:
-            logger.setLevel(logging.ERROR)
-        logger_info[logger.name] = logger.getEffectiveLevel()
+    await remove_old_files(('temp\\voice',), name_start='audio')
+    await log_scheduler_run("remove_old_file", "success", "Completed removing old audio", td)
 
-
-async def remove_imgs_log() -> None:
-    td = 24
-    await remove_old_image()
-    await log_scheduler_run("remove_old_image", "success", "Completed removing old images", td)
     await clear_outdated_images(td)
     await log_scheduler_run("clear_outdated_images_for_all_users", "success",
                             f"Completed clearing outdated images entry logs older than {td} hours", td)
@@ -69,7 +55,7 @@ async def start_scheduler() -> None:
     """
     scheduler = AsyncIOScheduler()
     scheduler.add_job(update_user_quotas, 'cron', hour=0, minute=0, second=0, timezone='UTC')
-    scheduler.add_job(remove_imgs_log, 'cron', hour=0, minute=0, second=0, timezone='UTC')
+    scheduler.add_job(remove_files_log, 'cron', hour=0, minute=0, second=0, timezone='UTC')
     scheduler.start()
     # Keep the scheduler running in the background
     while True:
@@ -86,9 +72,8 @@ async def run_bot_and_scheduler() -> None:
     await initialize_database()
     # Run
     await asyncio.gather(
-        start_scheduler(),
-        main(dp, bot)
-    )
+                         start_scheduler(),
+                         main(dp, bot))
 
 
 if __name__ == '__main__':
