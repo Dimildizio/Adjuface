@@ -12,7 +12,7 @@
     "target_uploaded": "Целевое фото загружено. Целевых загрузок осталось: {left}\nТеперь вы можете загрузить лицо которое хотите перенести",
     "not_premium": "Эта функция доступна по премиум подписке с неизрасходованным дневным лимитом на целевые загрузки. Хотите купить подписку?\n/buy_premium",
     "failed": "Не получилось обработать изображение. Пожалуйста, попробуйте снова.",
-    "captions": "Меняй лица тут: @{botname}",
+    "captions": "Меняй лица тут: @{bot_name}",
     "attempts_left": "У вас осталось {limit} запросов",
     "wrong_input": "Извините, я не поддерживаю этот тип данных. Я могу обрабатывать только фото загруженные из вашей галлереи.",
     "pay":"Стоимость месячной подписки равна всего лишь одной чашке кофе. Желаете подписаться?",
@@ -24,6 +24,7 @@
     "selected": "Изображение выбрано. Пришлите мне фото для замены лиц!",
     "button_back": "Назад",
     "morning": "Доброго времени суток!\nКурс валют на сегодня:\n\n",
+    "weather_word": "Погода:\n",
     "weather_keyboard": "\nЧтоб узнать погоду поделитесь геолокацией:",
     "weather_format": "Город {city_name}:\nТемпература: {temperature} °C\nОт: {max_temp} °C\nДо: {min_temp} °C\nОщущается как: {feels_like} °C\nСкорость ветра: {wind_speed} m/s\nДавление: {pressure}\nВлажность: {humidity}%\nОблачность: {clouds}%\nСейчас: {weather_desc}"
 
@@ -43,7 +44,7 @@
     "target_uploaded": "Target image uploaded. Uploads left: {left}\nSend your source image",
     "not_premium": "You need to have a premium subscription with unspent uploads limit for that. Use /buy_premium function",
     "failed": "Failed to process image. Please try again",
-    "captions": "Swap faces at @{botname}",
+    "captions": "Swap faces at @{bot_name}",
     "attempts_left": "You have {limit} attempts left",
     "wrong_input": "Sorry, I can't handle this type of content.\nPlease send me a photo from your gallery, and I will return the face of a person on it.",
     "pay": "The price of premium subscription is equal to one cup of coffee a month. Would you like to obtain it?",
@@ -55,6 +56,7 @@
     "selected": "Target image selected\nSend me a photo, and I'll process it!",
     "button_back": "Back",
     "morning": "Good Morning!\nExchange rates for today:\n",
+    "weather_word": "Weather forecast:\n",
     "weather_keyboard": "\nClick the button to share your location and get weather:",
     "weather_format": "City {city_name}:\nTemperature: {temperature} °C\nMax temp: {max_temp} °C\nMin temp: {min_temp} °C\nFeels like: {feels_like} °C\nWind speed: {wind_speed} m/s\nPressure: {pressure}\nHumidity: {humidity}%\nOvercast: {clouds}%\nWeather now: {weather_desc}"
   }

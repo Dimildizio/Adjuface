@@ -77,5 +77,5 @@ async def run_bot_and_scheduler() -> None:
 
 
 if __name__ == '__main__':
-    print(list_all_loggers())
+    list_all_loggers()
     asyncio.run(run_bot_and_scheduler())

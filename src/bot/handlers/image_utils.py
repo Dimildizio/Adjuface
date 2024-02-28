@@ -71,7 +71,7 @@ async def handler_image_send(message: Message, output_paths: List) -> bool:
             return False
         inp_file = FSInputFile(output_path)
         await message.answer_photo(photo=inp_file,
-                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['bot_name']))
+                                   caption=LOCALIZATION['captions'].format(bot_name=CONTACTS['bot_name']))
         print('Image sent')
     return True
 

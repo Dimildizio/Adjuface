@@ -85,7 +85,7 @@ To run Adjuface locally or on your own server, you will need the following:
   github: github.com/Dimildizio
   my_id: 12345678
   cryptohash: bc1j7f93nc7s4nc74n32sc43nu3tc
-  botname: YOUR_BOT_NAME
+  bot_name: YOUR_BOT_NAME
 token: YOUR_BOT_TOKEN
 ```
 
