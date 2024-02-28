@@ -1,21 +1,21 @@
 """
 This module serves as the central hub for dispatching incoming Telegram messages to their respective handlers.
 It leverages the Aiogram library to efficiently manage and route user messages, including commands, text inputs,
-and multimedia content, to the appropriate functionalities within the bot's architecture.
+and multimedia content, to the appropriate functionalities within the bot`s architecture.
 
 Purpose:
-- To act as the primary interface between the Telegram API and the bot's internal logic.
+- To act as the primary interface between the Telegram API and the bots internal logic.
 - To classify and route messages based on their content type (e.g., commands, photos, text) and context.
 
 Key Responsibilities:
 - Registering command handlers and callback query handlers from the `commands.py` module.
-- Initiating the bot's response to non-command messages, such as direct text inputs or photo submissions,
+- Initiating the bot`s response to non-command messages, such as direct text inputs or photo submissions,
   by invoking the relevant processing functions.
 - Implementing filters and checks to manage the flow of incoming messages and ensure they are handled appropriately,
   including rate limiting and content validation.
 
 Usage:
-- This module is intended to be used as part of the bot's startup process, which is in main.py with handlers for
+- This module is intended to be used as part of the bot`s startup process, which is in main.py with handlers for
 different types of Telegram messages and actions.
 - Handlers defined in `commands.py` and other modules are imported and registered with the `Dispatcher` here.
 
@@ -25,7 +25,7 @@ user, and routes the message to the corresponding function for handling.
 
 Note:
 - This module focuses on message dispatching and routing. Specific command implementations and business logic are
-  contained in `commands.py` and other dedicated modules, keeping the bot's architecture modular and maintainable.
+  contained in `commands.py` and other dedicated modules, keeping the bot`s architecture modular and maintainable.
 """
 
 

@@ -11,7 +11,7 @@ Key Functionalities:
 - Error handling for failed image processing or download attempts, ensuring users are informed of issues.
 
 Usage:
-- Functions in this module are designed to be called during the bot's handling of user-submitted images for
+- Functions in this module are designed to be called during the bots handling of user-submitted images for
   face swapping. They manage the technical aspects of image processing, from initial receipt to final presentation
   of the swapped images.
 
@@ -71,7 +71,7 @@ async def handler_image_send(message: Message, output_paths: List) -> bool:
             return False
         inp_file = FSInputFile(output_path)
         await message.answer_photo(photo=inp_file,
-                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['botname']))
+                                   caption=LOCALIZATION['captions'].format(botname=CONTACTS['bot_name']))
         print('Image sent')
     return True
 

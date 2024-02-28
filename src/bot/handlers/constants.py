@@ -1,6 +1,6 @@
 """
 This module centralizes the configuration settings, localization strings, and preloaded resources for the Telegram bot.
-It facilitates easy management and access to common resources and settings that are used throughout the bot's
+It facilitates easy management and access to common resources and settings that are used throughout the bots
 operations.
 
 Key Contents:
@@ -22,7 +22,7 @@ LANGUAGE = CONFIG['language']
 
 FACE_EXTRACTION_URL = CONFIG['fastapi_swapper']
 TGBOT_PATH = CONFIG['bot_path']
-TGBOT_NAME = CONFIG['botname']
+TGBOT_NAME = CONFIG['bot_name']
 
 DATABASE_FILE = CONFIG['db_name']
 ASYNC_DB_URL = f'{CONFIG["db_type"]}:///{DATABASE_FILE}'
