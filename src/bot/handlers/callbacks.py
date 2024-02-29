@@ -101,10 +101,20 @@ async def process_image_selection(query: CallbackQuery) -> None:
     await query.answer()
 
 
-async def premium_confirm(message: Message) -> None:
+async def confirm_pay() -> InlineKeyboardMarkup:
+    check_payment = InlineKeyboardButton(text="Подтвердить оплату", callback_data="check_payment")
+    return InlineKeyboardMarkup(inline_keyboard=[[check_payment]])
+
+
+async def keyboard_for_premium() -> InlineKeyboardMarkup:
     pay_button = InlineKeyboardButton(text=LOCALIZATION['get_premium_button'], callback_data="pay")
     check_payment = InlineKeyboardButton(text="Подтвердить оплату", callback_data="check_payment")
     markup = InlineKeyboardMarkup(inline_keyboard=[[pay_button], [check_payment]])
+    return markup
+
+
+async def premium_confirm(message: Message) -> None:
+    markup = await keyboard_for_premium()
     await message.answer(LOCALIZATION['pay'], reply_markup=markup)
 
 

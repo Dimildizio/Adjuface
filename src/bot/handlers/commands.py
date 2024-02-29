@@ -33,7 +33,6 @@ Example:
 """
 
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
-from datetime import datetime, timedelta
 from yoomoney import Client, Quickpay
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
@@ -41,7 +40,7 @@ from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_al
 from bot.database.db_logging import log_error, log_text_data
 from bot.database.db_images import clear_output_images_by_user_id
 from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection, \
-                                   create_location_request_keyboard
+                                   create_location_request_keyboard, confirm_pay
 from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
 from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, PRICE, DELAY_BETWEEN_IMAGES, \
@@ -308,9 +307,9 @@ async def generate_payment(query):
     # generate db_pay_id here
     paylink = Quickpay(receiver=YOUNUM, quickpay_form="button", targets="Startup", paymentType="SB", sum=PRICE,
                        label=query.from_user.id)  # add db_pay_id with a split symbol here
-
+    markup = await confirm_pay()
     await query.message.answer('После оплаты, обязательно подтвердите кнопкой "Подтвердить оплату"')
-    await query.message.answer(paylink.redirected_url)
+    await query.message.answer(paylink.redirected_url, reply_markup=markup)
 
 
 async def button_callback_handler(query: CallbackQuery) -> None:

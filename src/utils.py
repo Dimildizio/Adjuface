@@ -108,7 +108,6 @@ def list_all_loggers() -> None:
         logger_info[logger.name] = logger.getEffectiveLevel()
 
 
-
 async def add_scheduler_logs_table() -> None:
     """"Migrate db creating a new scheduler logs table"""
     from bot.db_requests import async_engine
@@ -179,7 +178,7 @@ async def generate_filename(folder: str = 'original', filetype: str = 'img', ext
     """
     Asynchronously generates a unique filename for storing an image in a specified folder.
 
-    :param folder: The name of the folder within 'temp' (custom targets or original imgs) where the file will be stored.
+    :param folder: The name of the folder within 'temp' (custom targets or orig images) where the file will be stored.
     :param filetype: name tag for further recognition by other functions
     :param ext: specify extension
     :return: The absolute path to the generated filename.
