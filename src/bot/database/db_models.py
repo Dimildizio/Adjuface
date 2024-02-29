@@ -41,6 +41,7 @@ class User(Base):
     messages = relationship("Message", back_populates="user")
     image_names = relationship("ImageName", back_populates="user")
     premium_purchases = relationship("PremiumPurchase", back_populates="user", order_by='PremiumPurchase.purchase_date')
+    payments = relationship("Payment", back_populates="user")
 
 
 class Message(Base):
@@ -52,6 +53,17 @@ class Message(Base):
     timestamp = Column(TIMESTAMP, server_default=func.now())
 
     user = relationship("User", back_populates="messages")
+
+
+class Payment(Base):
+    __tablename__ = 'payments'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    operation_id = Column(String)
+    payment_datetime = Column(TIMESTAMP, default=datetime.now())
+
+    user = relationship("User", back_populates="payments")
 
 
 class ImageName(Base):

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Dict, List, Any, Optional, Union
 
-from bot.database.db_models import ImageName, User, SchedulerLog, PremiumPurchase, ErrorLog, async_engine
+from bot.database.db_models import ImageName, User, SchedulerLog, PremiumPurchase, Payment, ErrorLog, async_engine
 from bot.handlers.constants import DATEFORMAT
 
 
@@ -164,7 +164,7 @@ async def return_user(user: User) -> Dict[str, Union[int, str, bool, Column]]:
             'premium_expiration': {user.premium_expiration}}
 
 
-async def fetch_all_user_ids() -> List[int]:
+async def fetch_all_user_ids() -> Any:
     """
     Fetch all user tg IDs from the database.
 
@@ -222,3 +222,62 @@ async def fetch_recent_errors(limit: int = 10) -> List[Dict[str, Any]]:
                 "last_name": error_log.last_name
             } for error_log in error_logs]
             return recent_errors
+
+
+async def fetch_payments_by_user_id(user_id: int) -> Any:
+    """
+    Retrieve all payments associated with a user by user ID.
+
+    :param user_id: The user's tg ID.
+    :return: List of payments.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+
+            if user:
+                payments = await session.execute(select(Payment).filter_by(user_id=user.id))
+                payments = payments.scalars().all()
+                return payments
+            return []
+
+
+async def operation_not_in_payments(user_id: int, operation_id: str) -> bool:
+    """
+    Check if a specific operation ID does not exist in the payments associated with a user.
+
+    :param user_id: The user's tg ID.
+    :param operation_id: The ID of the payment operation to check.
+    :return: True if operation_id is not found in payments, False otherwise.
+    """
+    operation_not_found = False
+    async with AsyncSession(async_engine) as session:
+        # Fetch the user by Telegram ID
+        user_result = await session.execute(
+            select(User.id).filter_by(user_id=user_id))
+        db_user_id = user_result.scalar_one_or_none()
+
+        if db_user_id:
+            # Fetch all payments for the specific user by their user ID
+            user_payments_result = await session.execute(
+                select(Payment.operation_id).filter(Payment.user_id == db_user_id))
+            user_payments = user_payments_result.scalars().all()
+
+            # Check if the specific operation_id is not found in the user's payments
+            operation_not_found = operation_id not in user_payments
+        return operation_not_found
+
+
+async def fetch_all_payments_of_users() -> None:
+    """
+    Fetch and print all payment entries for all users in the database
+    """
+    async with AsyncSession(async_engine) as session:
+
+        all_payments_result = await session.execute(
+            select(Payment.user_id, Payment.operation_id).join(User, User.id == Payment.user_id))
+        all_payments = all_payments_result.all()
+        print("All payment entries for all users:")
+        for payment in all_payments:
+            print(f"User ID: {payment.user_id}, Operation ID: {payment.operation_id}")

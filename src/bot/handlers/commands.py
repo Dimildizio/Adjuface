@@ -35,8 +35,9 @@ Example:
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
 from yoomoney import Client, Quickpay
 
-from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
-from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data
+from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, insert_payment, \
+                                  set_requests_left, delete_all_payments_for_user
+from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data, operation_not_in_payments
 from bot.database.db_logging import log_error, log_text_data
 from bot.database.db_images import clear_output_images_by_user_id
 from bot.handlers.callbacks import create_category_buttons, show_images_for_category, process_image_selection, \
@@ -290,14 +291,27 @@ async def set_user_to_premium(query: CallbackQuery) -> None:
 async def check_premium_payment(query):
     youser = Client(YOUTOK)
     history = youser.operation_history()
-    print('\n\n\n\n', query.from_user.id)
+    uid = query.from_user.id
+
     for op in history.operations:
         # splot op.label on user id and unique quick pay id
         # figure out how to take only past day operations (maybe from date) without filtering them
-        if op.label == str(query.from_user.id) and op.status == 'success' and op.amount >= PRICE*0.9:
-            # and op.operation_id not in db
-            await set_user_to_premium(query)
-            return  # Write user: op.operation_id to db
+        if op.label == str(uid):
+            print(f'user {uid} in label history')
+            if op.status == 'success':
+                if op.amount >= PRICE*0.9:
+                    print('price good')
+                    if await operation_not_in_payments(uid, op.operation_id):
+                        # and op.operation_id not in db
+                        await insert_payment(uid, op.operation_id, op.datetime)
+                        await set_user_to_premium(query)
+                        return  # Write user: op.operation_id to db
+                    else:
+                        print('operation in payments sorry')
+                else:
+                    print('price bad')
+        else:
+            print('label not in')
     await query.answer("Оплата не зафиксирована, сначала выполните оплату", show_alert=True)
 
 
@@ -305,6 +319,7 @@ async def generate_payment(query):
     """later add unique payment id to write in db to enable / disable it and prevent adding premium each click
         after 1 purchase, add quick pay unique id to db as well as operation_id """
     # generate db_pay_id here
+
     paylink = Quickpay(receiver=YOUNUM, quickpay_form="button", targets="Startup", paymentType="SB", sum=PRICE,
                        label=query.from_user.id)  # add db_pay_id with a split symbol here
     markup = await confirm_pay()

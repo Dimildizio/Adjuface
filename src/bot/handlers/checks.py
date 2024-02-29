@@ -27,7 +27,7 @@ from aiogram.types import Message, FSInputFile
 from datetime import datetime, timedelta
 from typing import Any
 
-from bot.database.db_users import exist_user_check, toggle_receive_target_flag, update_user_mode, decrement_targets_left
+from bot.database.db_users import exist_user_check, toggle_receive_target_flag, update_user_mode, decrement_targets_left, buy_premium
 from bot.database.db_fetching import fetch_user_data, fetch_recent_errors, fetch_scheduler_logs, fetch_user_by_id
 from bot.database.db_updates import update_photo_timestamp
 from bot.database.db_logging import log_error
@@ -158,6 +158,7 @@ async def utility_func(message: Message) -> None:
         # await message.answer_video(FSInputFile(send_path))
         # await message.answer_photo(FSInputFile(send_path))
         # await message.answer(send_path)
+        # await buy_premium(message.from_user.id)
     except Exception as e:
         await log_error(message.from_user.id, error_message='UtilityFuncError: '+str(e))
         print('Attention! We got an error!', e)

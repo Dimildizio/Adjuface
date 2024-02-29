@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 # import unittest
 
 
-DATABASE_FILE = '../../src/user_database.db'
+# DATABASE_FILE = '../../src/user_database.db'
+DATABASE_FILE = 'user_database.db'
+
 DATABASE_TEST_FILE = f'sqlite:///{DATABASE_FILE}'
 
 
@@ -77,8 +79,6 @@ def add_premium_class():
     premium_users = cursor.fetchall()
 
     for user_id, premium_expiration in premium_users:
-        # Use the existing premium_expiration date for the expiration_date in PremiumPurchases
-        # Assuming the purchase_date is 30 days before the expiration_date
         expiration_date = datetime.strptime(premium_expiration, "%Y-%m-%d").date()
         purchase_date = expiration_date - timedelta(days=30)
 
@@ -123,8 +123,61 @@ def show_all_image_names():
     conn.close()
 
 
+def migrate_payment():
+    create_payments_table = """
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        operation_id TEXT NOT NULL,
+        payment_datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+    );
+    """
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # Create the payments table
+    cursor.execute(create_payments_table)
+
+    # Commit the changes and close the connection
+    conn.commit()
+    conn.close()
+
+
+def insert_payment(user_id, operation_id, payment_datetime):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        INSERT INTO payments (user_id, operation_id, payment_datetime)
+        VALUES (?, ?, ?)
+    ''', (user_id, operation_id, payment_datetime))
+
+    conn.commit()
+    conn.close()
+
+
+def show_payments_by_user_id(user_id):
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT * FROM payments
+        WHERE user_id = ?
+        ORDER BY payment_datetime DESC
+    ''', (user_id,))
+
+    payments = cursor.fetchall()
+    conn.close()
+    return payments
+
+
 if __name__ == '__main__':
     print()
+    # migrate_payment()
+    # insert_payment(12345, '1234', datetime.now())
+    # payments=show_payments_by_user_id(12345)
+    # print(payments)
     # add_timestamp_column_to_image_names()
     # add_premium_class()
     # show_all_image_names()

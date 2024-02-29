@@ -4,7 +4,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
-from bot.database.db_models import User, PremiumPurchase, Message, async_engine
+from bot.database.db_models import User, PremiumPurchase, Message, Payment, async_engine
 from bot.handlers.constants import PREMIUM_DAYS
 
 
@@ -242,3 +242,87 @@ async def insert_message(user_id: int, text_data: str) -> None:
                 message = Message(user_id=user.id, text_data=text_data)
                 session.add(message)
             await session.commit()
+
+
+async def insert_payment(user_id: int, operation_id: str, payment_datetime: datetime) -> None:
+    """
+    Insert a payment record associated with a user into the database.
+
+    :param user_id: The user's tg ID.
+    :param operation_id: The name of the payment operation.
+    :param payment_datetime: datetime of the operation in bank system
+    :return: None
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user.scalar_one_or_none()
+            if user:
+                payment = Payment(user_id=user.id, operation_id=operation_id, payment_datetime=payment_datetime)
+                session.add(payment)
+                print(f'Payment commenced for: \n\tid:{user.id}\n\tuser:{user_id}\n\toperation{operation_id}')
+            await session.commit()
+
+
+async def delete_payment_operation_for_user(user_tg_id: int, operation_id: str) -> bool:
+    """
+    Deletes a payment operation for a user identified by Telegram ID and operation ID.
+
+    :param user_tg_id: The user's Telegram ID.
+    :param operation_id: The ID of the payment operation to delete.
+    :return: True if the operation was successfully deleted, False otherwise.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user_result = await session.execute(
+                select(User.id).filter_by(tg_id=user_tg_id)
+            )
+            user_id = user_result.scalar_one_or_none()
+
+            if user_id:
+                # Attempt to find the payment with the specified operation_id for the user
+                payment_result = await session.execute(
+                    select(Payment).filter_by(user_id=user_id, operation_id=operation_id)
+                )
+                payment = payment_result.scalars().first()
+
+                if payment:
+                    await session.delete(payment)
+                    await session.commit()
+                    print(f"Deleted payment with operation ID {operation_id} for user {user_tg_id}.")
+                    return True
+                else:
+                    print(f"No payment found with operation ID {operation_id} for user {user_tg_id}.")
+            else:
+                print(f"No user found with Telegram ID {user_tg_id}.")
+
+            return False
+
+
+async def delete_all_payments_for_user(user_id: int) -> bool:
+    """
+    Deletes all payment operations for a user identified by Telegram ID.
+
+    :param user_id: The user's Telegram ID.
+    :return: True if operations were successfully deleted, False otherwise.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            # Fetch the user by Telegram ID to get the internal user ID
+            user_result = await session.execute(
+                select(User.id).filter_by(user_id=user_id)
+            )
+            db_user_id = user_result.scalar_one_or_none()
+
+            if db_user_id:
+                # Find all payments for the user and delete them
+                await session.execute(
+                    delete(Payment).where(Payment.user_id == db_user_id)
+                )
+                await session.commit()
+                print(f"All payments deleted for user with Telegram ID {user_id}.")
+                return True
+            else:
+                print(f"No user found with Telegram ID {user_id}.")
+
+            return False
