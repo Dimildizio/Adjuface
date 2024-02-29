@@ -32,8 +32,9 @@ Example:
   and instructions for using the bots features.
 """
 
-
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
+from datetime import datetime, timedelta
+from yoomoney import Client, Quickpay
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, set_requests_left
 from bot.database.db_fetching import fetch_user_by_id, fetch_user_data, fetch_all_users_data
@@ -43,8 +44,8 @@ from bot.handlers.callbacks import create_category_buttons, show_images_for_cate
                                    create_location_request_keyboard
 from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
-from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, \
-                                   CURRENCY_URL, WEATHER_URL, WEATHER_API
+from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, PRICE, DELAY_BETWEEN_IMAGES, \
+                                   CURRENCY_URL, WEATHER_URL, WEATHER_API, YOUTOK, YOUNUM
 from bot.handlers.image_utils import handle_image_constants, image_handler_logic
 from utils import get_exchange_rate, get_weather
 
@@ -162,6 +163,7 @@ async def handle_unsupported_content(message: Message) -> None:
     :param message: The message with user data.
     :return: None
     """
+
     await message.answer(LOCALIZATION['wrong_input'])
 
 
@@ -286,6 +288,31 @@ async def set_user_to_premium(query: CallbackQuery) -> None:
     await donate_link(query.message)
 
 
+async def check_premium_payment(query):
+    youser = Client(YOUTOK)
+    history = youser.operation_history()
+    print('\n\n\n\n', query.from_user.id)
+    for op in history.operations:
+        # splot op.label on user id and unique quick pay id
+        # figure out how to take only past day operations (maybe from date) without filtering them
+        if op.label == str(query.from_user.id) and op.status == 'success' and op.amount >= PRICE*0.9:
+            # and op.operation_id not in db
+            await set_user_to_premium(query)
+            return  # Write user: op.operation_id to db
+    await query.answer("Оплата не зафиксирована, сначала выполните оплату", show_alert=True)
+
+
+async def generate_payment(query):
+    """later add unique payment id to write in db to enable / disable it and prevent adding premium each click
+        after 1 purchase, add quick pay unique id to db as well as operation_id """
+    # generate db_pay_id here
+    paylink = Quickpay(receiver=YOUNUM, quickpay_form="button", targets="Startup", paymentType="SB", sum=PRICE,
+                       label=query.from_user.id)  # add db_pay_id with a split symbol here
+
+    await query.message.answer('После оплаты, обязательно подтвердите кнопкой "Подтвердить оплату"')
+    await query.message.answer(paylink.redirected_url)
+
+
 async def button_callback_handler(query: CallbackQuery) -> None:
     """
     Handles button callbacks from inline keyboards. Categories, modes (numbers) and back button.
@@ -301,7 +328,9 @@ async def button_callback_handler(query: CallbackQuery) -> None:
             keyboard = await create_category_buttons()
             await query.message.edit_text(LOCALIZATION['category'], reply_markup=keyboard)
         case 'pay':
-            await set_user_to_premium(query)  # answer(LOCALIZATION['got_premium'])
+            await generate_payment(query)  # set_user_to_premium(query)  # answer(LOCALIZATION['got_premium'])
+        case 'check_payment':
+            await check_premium_payment(query)
         case _:
             await process_image_selection(query)
     await query.answer()

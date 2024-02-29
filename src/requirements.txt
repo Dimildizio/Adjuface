@@ -11,4 +11,5 @@ torch
 uvicorn
 opencv-python
 insightface==0.7.3
+yoomoney==0.1.0
 sqlalchemy

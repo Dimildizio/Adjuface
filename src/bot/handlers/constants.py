@@ -44,6 +44,11 @@ STT_LINK = CONFIG['stt_link']
 TTS_AUTH = CONFIG['tts_auth']
 TTS_TOKEN = CONFIG['tts_token']
 TTS_AUDIO_SIZE = CONFIG['tts_audio_size']
+
 CURRENCY_URL = CONFIG['currency_url']
 WEATHER_URL = CONFIG['weather_url']
 WEATHER_API = CONFIG['weather_api']
+
+YOUTOK = CONFIG['you_token']
+YOUNUM = CONFIG['you_num']
+PRICE = CONFIG['price']

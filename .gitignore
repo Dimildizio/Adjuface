@@ -3,6 +3,7 @@
 /src/config.yaml
 /src/target_images_en.json
 /src/target_images_ru.json
+/src/bot/payments
 /src/user_database.db
 /src/bot/contacts.yaml
 /src/face_carver/inswapper_128.onnx
