@@ -26,8 +26,10 @@
     "morning": "Доброго времени суток!\nКурс валют на сегодня:\n\n",
     "weather_word": "Погода:\n",
     "weather_keyboard": "\nЧтоб узнать погоду поделитесь геолокацией:",
-    "weather_format": "Город {city_name}:\nТемпература: {temperature} °C\nОт: {max_temp} °C\nДо: {min_temp} °C\nОщущается как: {feels_like} °C\nСкорость ветра: {wind_speed} m/s\nДавление: {pressure}\nВлажность: {humidity}%\nОблачность: {clouds}%\nСейчас: {weather_desc}"
-
+    "weather_format": "Город {city_name}:\nТемпература: {temperature} °C\nОт: {max_temp} °C\nДо: {min_temp} °C\nОщущается как: {feels_like} °C\nСкорость ветра: {wind_speed} m/s\nДавление: {pressure}\nВлажность: {humidity}%\nОблачность: {clouds}%\nСейчас: {weather_desc}",
+    "no_payment": "Оплата не зафиксирована, сначала выполните оплату",
+    "ask_confirm_pay": "После оплаты обязательно подтвердите кнопкой 'Подтвердить оплату'",
+    "button_confirm_pay": "Подтвердить оплату"
   },
 
 
@@ -47,7 +49,7 @@
     "captions": "Swap faces at @{bot_name}",
     "attempts_left": "You have {limit} attempts left",
     "wrong_input": "Sorry, I can't handle this type of content.\nPlease send me a photo from your gallery, and I will return the face of a person on it.",
-    "pay": "The price of premium subscription is equal to one cup of coffee a month. Would you like to obtain it?",
+    "pay": "The price of premium subscription is about one cup of coffee a month. Would you like to obtain it?",
     "get_premium_button": "Subscribe!",
     "got_premium": "Congratulations! You got premium status!'\nYou have {req} attempts left and {targets} custom target uploads.",
     "status": "Your have a {status} account {exp}\nToday you have {req} attempts with {is_prem} target uploads left.",
@@ -58,6 +60,9 @@
     "morning": "Good Morning!\nExchange rates for today:\n",
     "weather_word": "Weather forecast:\n",
     "weather_keyboard": "\nClick the button to share your location and get weather:",
-    "weather_format": "City {city_name}:\nTemperature: {temperature} °C\nMax temp: {max_temp} °C\nMin temp: {min_temp} °C\nFeels like: {feels_like} °C\nWind speed: {wind_speed} m/s\nPressure: {pressure}\nHumidity: {humidity}%\nOvercast: {clouds}%\nWeather now: {weather_desc}"
+    "weather_format": "City {city_name}:\nTemperature: {temperature} °C\nMax temp: {max_temp} °C\nMin temp: {min_temp} °C\nFeels like: {feels_like} °C\nWind speed: {wind_speed} m/s\nPressure: {pressure}\nHumidity: {humidity}%\nOvercast: {clouds}%\nWeather now: {weather_desc}",
+    "no_payment": "No payment found, please proceed to payment first",
+    "ask_confirm_pay": "Don't forget to confirm your payment buy clicking 'Confirm payment'",
+    "button_confirm_pay": "Confirm payment"
   }
 }

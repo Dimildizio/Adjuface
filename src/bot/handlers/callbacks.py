@@ -102,13 +102,13 @@ async def process_image_selection(query: CallbackQuery) -> None:
 
 
 async def confirm_pay() -> InlineKeyboardMarkup:
-    check_payment = InlineKeyboardButton(text="Подтвердить оплату", callback_data="check_payment")
+    check_payment = InlineKeyboardButton(text=LOCALIZATION['button_confirm_pay'], callback_data="check_payment")
     return InlineKeyboardMarkup(inline_keyboard=[[check_payment]])
 
 
 async def keyboard_for_premium() -> InlineKeyboardMarkup:
     pay_button = InlineKeyboardButton(text=LOCALIZATION['get_premium_button'], callback_data="pay")
-    check_payment = InlineKeyboardButton(text="Подтвердить оплату", callback_data="check_payment")
+    check_payment = InlineKeyboardButton(text=LOCALIZATION['button_confirm_pay'], callback_data="check_payment")
     markup = InlineKeyboardMarkup(inline_keyboard=[[pay_button], [check_payment]])
     return markup
 

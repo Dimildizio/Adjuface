@@ -296,23 +296,15 @@ async def check_premium_payment(query):
     for op in history.operations:
         # splot op.label on user id and unique quick pay id
         # figure out how to take only past day operations (maybe from date) without filtering them
-        if op.label == str(uid):
-            print(f'user {uid} in label history')
-            if op.status == 'success':
-                if op.amount >= PRICE*0.9:
-                    print('price good')
-                    if await operation_not_in_payments(uid, op.operation_id):
-                        # and op.operation_id not in db
-                        await insert_payment(uid, op.operation_id, op.datetime)
-                        await set_user_to_premium(query)
-                        return  # Write user: op.operation_id to db
-                    else:
-                        print('operation in payments sorry')
-                else:
-                    print('price bad')
+        if op.label == str(uid) and op.status == 'success' and op.amount >= PRICE*0.9 \
+            and await operation_not_in_payments(uid, op.operation_id):
+                # and op.operation_id not in db
+            await insert_payment(uid, op.operation_id, op.datetime)
+            await set_user_to_premium(query)
+            return  # Write user: op.operation_id to db
         else:
-            print('label not in')
-    await query.answer("Оплата не зафиксирована, сначала выполните оплату", show_alert=True)
+            print(f'{op.label} of {uid} not in')
+    await query.answer(LOCALIZATION['no_payment'], show_alert=True)
 
 
 async def generate_payment(query):
@@ -323,7 +315,7 @@ async def generate_payment(query):
     paylink = Quickpay(receiver=YOUNUM, quickpay_form="button", targets="Startup", paymentType="SB", sum=PRICE,
                        label=query.from_user.id)  # add db_pay_id with a split symbol here
     markup = await confirm_pay()
-    await query.message.answer('После оплаты, обязательно подтвердите кнопкой "Подтвердить оплату"')
+    await query.message.answer(LOCALIZATION['ask_confirm_pay'])
     await query.message.answer(paylink.redirected_url, reply_markup=markup)
 
 
