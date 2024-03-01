@@ -292,7 +292,7 @@ async def check_premium_payment(query):
     youser = Client(YOUTOK)
     history = youser.operation_history()
     uid = query.from_user.id
-
+    await exist_user_check(query.from_user)
     for op in history.operations:
         # splot op.label on user id and unique quick pay id
         # figure out how to take only past day operations (maybe from date) without filtering them

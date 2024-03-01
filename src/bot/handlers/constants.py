@@ -52,3 +52,5 @@ WEATHER_API = CONFIG['weather_api']
 YOUTOK = CONFIG['you_token']
 YOUNUM = CONFIG['you_num']
 PRICE = CONFIG['price']
+
+UTIL_FOLDER = CONFIG['util_folder']

@@ -21,17 +21,18 @@ Dependencies:
 - Application-specific database request functions: For querying and updating user data.
 - Localization and constants: For accessing predefined messages and configuration settings.
 """
-
+import os
 
 from aiogram.types import Message, FSInputFile
 from datetime import datetime, timedelta
 from typing import Any
 
-from bot.database.db_users import exist_user_check, toggle_receive_target_flag, update_user_mode, decrement_targets_left, buy_premium
+from bot.database.db_users import exist_user_check, toggle_receive_target_flag, update_user_mode, \
+                                  decrement_targets_left, buy_premium
 from bot.database.db_fetching import fetch_user_data, fetch_recent_errors, fetch_scheduler_logs, fetch_user_by_id
 from bot.database.db_updates import update_photo_timestamp
 from bot.database.db_logging import log_error
-from bot.handlers.constants import LOCALIZATION, DELAY_BETWEEN_IMAGES
+from bot.handlers.constants import LOCALIZATION, DELAY_BETWEEN_IMAGES, UTIL_FOLDER
 
 
 SENT_TIME = {}
@@ -153,10 +154,14 @@ async def utility_func(message: Message) -> None:
     """
     try:
         await fetch_scheduler_logs()
-        send_path = r''
-        print('Working on', send_path)
-        # await message.answer_video(FSInputFile(send_path))
-        # await message.answer_photo(FSInputFile(send_path))
+        for file_name in os.listdir(UTIL_FOLDER):
+            file_path = os.path.join(UTIL_FOLDER, file_name)
+            print('Working on', file_path)
+            if file_path.endswith(('.png', '.jpg')):
+                await message.answer_photo(FSInputFile(file_path))
+            elif file_path.endswith('.mp4'):
+                await message.answer_video(FSInputFile(file_path))
+
         # await message.answer(send_path)
         # await buy_premium(message.from_user.id)
     except Exception as e:
