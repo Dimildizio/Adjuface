@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from bot.database.db_models import User, PremiumPurchase, Message, Payment, async_engine
-from bot.handlers.constants import PREMIUM_DAYS
+from bot.handlers.constants import PREMIUM_DAYS, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS
 
 
 async def insert_user(user_id: int, username: str, first_name: str, last_name: str, mode: int = 1):
@@ -94,12 +94,12 @@ async def decrement_targets_left(user_id: int, n: int = 1) -> None:
             await session.commit()
 
 
-async def set_requests_left(user_id: int, number: int = 10) -> None:
+async def set_requests_left(user_id: int, number: int = FREE_REQUESTS) -> None:
     """
     Set the number of images user can receive.
 
     :param user_id: The user's tg ID.
-    :param number: The number of requests_left (default is 10).
+    :param number: The number of requests_left (default is 2).
     :return: None
     """
     async with AsyncSession(async_engine) as session:
@@ -135,13 +135,13 @@ async def buy_premium(user_id: int) -> None:
                     user_id=user.user_id,
                     purchase_date=datetime.now().date(),
                     expiration_date=new_expiration_date.date(),
-                    targets_increment=10,
-                    request_increment=100
+                    targets_increment=PREMIUM_REQUESTS,
+                    request_increment=PREMIUM_TARGETS
                 )
                 session.add(new_premium)
 
-                user.requests_left += 100
-                user.targets_left += 10
+                user.requests_left += PREMIUM_REQUESTS
+                user.targets_left += PREMIUM_TARGETS
                 user.status = "premium"
                 user.premium_expiration = new_expiration_date  # 30 days for premium
             await session.commit()
@@ -197,8 +197,8 @@ async def add_premium_purchase_for_premium_users():
                     user_id=user.user_id,
                     purchase_date=purchase_date,
                     expiration_date=expiration_date,
-                    targets_increment=10,
-                    request_increment=100)
+                    targets_increment=PREMIUM_TARGETS,
+                    request_increment=PREMIUM_REQUESTS)
 
                 session.add(new_purchase)
 

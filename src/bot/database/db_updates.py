@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.db_models import User, PremiumPurchase, async_engine
 from bot.database.db_logging import log_scheduler_run
-from bot.handlers.constants import HOUR_INTERVAL
+from bot.handlers.constants import HOUR_INTERVAL,FREE_REQUESTS
 
 
 async def update_photo_timestamp(user_id: int, timestamp: datetime) -> None:
@@ -24,7 +24,7 @@ async def update_photo_timestamp(user_id: int, timestamp: datetime) -> None:
             await session.commit()
 
 
-async def update_user_quotas(free_requests: int = 10, td: int = HOUR_INTERVAL) -> None:
+async def update_user_quotas(free_requests: int = FREE_REQUESTS, td: int = HOUR_INTERVAL) -> None:
     """
     Update user quotas based on their status.
 

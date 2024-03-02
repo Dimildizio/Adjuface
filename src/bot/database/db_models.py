@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, ForeignKey, fun
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from bot.handlers.constants import ASYNC_DB_URL
+from bot.handlers.constants import ASYNC_DB_URL, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS
 
 
 Base = declarative_base()
@@ -16,8 +16,8 @@ class PremiumPurchase(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     purchase_date = Column(Date, default=date.today)
     expiration_date = Column(Date)
-    targets_increment = Column(Integer, default=10)
-    request_increment = Column(Integer, default=100)
+    targets_increment = Column(Integer, default=PREMIUM_REQUESTS)
+    request_increment = Column(Integer, default=PREMIUM_TARGETS)
 
     user = relationship("User", back_populates='premium_purchases')
 
@@ -33,7 +33,7 @@ class User(Base):
     mode = Column(Integer, default=1)
     receive_target_flag = Column(Integer, default=0)
     status = Column(String, default='free')
-    requests_left = Column(Integer, default=10)
+    requests_left = Column(Integer, default=FREE_REQUESTS)
     targets_left = Column(Integer, default=0)
     last_photo_sent_timestamp = Column(TIMESTAMP, default=datetime.now())
     premium_expiration = Column(Date, nullable=True)

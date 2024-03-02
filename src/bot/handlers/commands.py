@@ -33,6 +33,7 @@ Example:
 """
 
 from aiogram.types import Message, CallbackQuery, FSInputFile, ReplyKeyboardRemove
+from datetime import datetime
 from yoomoney import Client, Quickpay
 
 from bot.database.db_users import exist_user_check, toggle_receive_target_flag, buy_premium, insert_payment, \
@@ -45,7 +46,7 @@ from bot.handlers.callbacks import create_category_buttons, show_images_for_cate
 from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
 from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, PRICE, DELAY_BETWEEN_IMAGES, \
-                                   CURRENCY_URL, WEATHER_URL, WEATHER_API, YOUTOK, YOUNUM
+                                   CURRENCY_URL, CURRENCY_API, WEATHER_URL, WEATHER_API, YOUTOK, YOUNUM, FREE_REQUESTS
 from bot.handlers.image_utils import handle_image_constants, image_handler_logic
 from utils import get_exchange_rate, get_weather
 
@@ -71,7 +72,7 @@ async def handle_location(message: Message) -> None:
     """
     if not await is_premium(message):
         return await handle_unsupported_content(message)
-    await message.answer('Погода:', reply_markup=ReplyKeyboardRemove())
+    await message.answer(LOCALIZATION['weather_word'], reply_markup=ReplyKeyboardRemove())
     try:
         await message.delete()
     except RuntimeError as e:
@@ -88,7 +89,14 @@ async def handle_hello(message: Message) -> None:
         return await handle_unsupported_content(message)
     result = LOCALIZATION['morning']
     for cur1, cur2 in (('btc', 'usd'), ('usd', 'rub'), ('cny', 'rub')):
-        cur = await get_exchange_rate(cur1, cur2, f'{CURRENCY_URL}{cur1}/{cur2}.json')
+        cur = await get_exchange_rate(cur1, cur2, f'{CURRENCY_URL}{cur1}.json')
+        try:
+            if 'Error' in cur:  # assert 'Error' not in cur
+                print('Error fetching from basic url')
+                raise RuntimeError('Error fetching currency from basic url')
+        except RuntimeError as e:
+            await log_error(message.from_user.id, error_message=str(e), details=f'{cur1}-{cur2} at {datetime.now()}')
+            cur = await get_exchange_rate(cur1, cur2, f'{CURRENCY_API}{cur1}.json')
         result = result + cur
 
     keyboard = await create_location_request_keyboard()
@@ -175,8 +183,7 @@ async def reset_images_left(message: Message) -> None:
     :return: None
     """
     await exist_user_check(message.from_user)
-    n = 10
-    await set_requests_left(message.from_user.id, n)
+    await set_requests_left(message.from_user.id, FREE_REQUESTS)
     new_number = await fetch_user_data(message.from_user.id)
     await message.answer(LOCALIZATION['attempts_left'].format(limit=new_number.requests_left))
 
@@ -191,10 +198,10 @@ async def check_status(message: Message) -> None:
     await exist_user_check(message.from_user)
     user = await fetch_user_data(message.from_user.id)
     expiration = user.premium_expiration or ' '
-    await message.answer(LOCALIZATION['status'].format(status=user.status,
-                                                       exp=expiration,
-                                                       req=user.requests_left,
-                                                       is_prem=user.targets_left))
+    text = LOCALIZATION['status'].format(status=user.status, exp=expiration, req=user.requests_left)
+    if user.status == 'premium':
+        text = text + LOCALIZATION['status_prem'].format(is_prem=user.targets_left)
+    await message.answer(text)
 
 
 async def set_receive_flag(message: Message) -> None:
@@ -297,8 +304,8 @@ async def check_premium_payment(query):
         # splot op.label on user id and unique quick pay id
         # figure out how to take only past day operations (maybe from date) without filtering them
         if op.label == str(uid) and op.status == 'success' and op.amount >= PRICE*0.9 \
-            and await operation_not_in_payments(uid, op.operation_id):
-                # and op.operation_id not in db
+         and await operation_not_in_payments(uid, op.operation_id):
+            # and op.operation_id not in db
             await insert_payment(uid, op.operation_id, op.datetime)
             await set_user_to_premium(query)
             return  # Write user: op.operation_id to db

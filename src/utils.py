@@ -236,7 +236,7 @@ async def get_exchange_rate(cur1, cur2, api_url):
             if response.status == 200:
                 data = await response.text(encoding='utf-8')
                 data = json.loads(data)
-                data = round(data[cur2], 2)
+                data = round(data[cur1][cur2], 2)
                 return f'{cur1}-{cur2}: {data}\n'
             else:
                 return f'Error fetching {cur1}-{cur2}: {response.status}'

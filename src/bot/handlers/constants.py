@@ -31,6 +31,9 @@ DELAY_BETWEEN_IMAGES = CONFIG['img_delay']
 
 HOUR_INTERVAL = CONFIG['hour_interval']
 PREMIUM_DAYS = CONFIG['premium_days']
+FREE_REQUESTS = CONFIG['free_requests']
+PREMIUM_REQUESTS = CONFIG['premium_requests']
+PREMIUM_TARGETS = CONFIG['premium_targets']
 
 DATEFORMAT = '%Y-%m-%d'
 
@@ -46,6 +49,8 @@ TTS_TOKEN = CONFIG['tts_token']
 TTS_AUDIO_SIZE = CONFIG['tts_audio_size']
 
 CURRENCY_URL = CONFIG['currency_url']
+CURRENCY_API = CONFIG['currency_api']
+
 WEATHER_URL = CONFIG['weather_url']
 WEATHER_API = CONFIG['weather_api']
 
