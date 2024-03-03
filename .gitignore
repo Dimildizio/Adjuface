@@ -10,6 +10,8 @@
 /research/db/db_backup
 /research/face_extraction/models
 /research/face_extraction/seg_models
+/research/nlp/tmp
+/research/nlp/chats
 /research/gans/models/variables/variables.data-00000-of-00001
 /research/segmentation/runs/segment/train
 /research/segmentation/runs/segment/train2
