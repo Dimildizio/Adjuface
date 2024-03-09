@@ -12,6 +12,13 @@ from bot.database.db_images import create_image_entry, update_image_entry
 
 
 async def log_error(user_id: Optional[int], error_message: str, details: Optional[str] = None) -> None:
+    """
+    Logs errors into db
+    :param user_id: User tg id
+    :param error_message: Text of error message
+    :param details: Extra info
+    :return:
+    """
     async with AsyncSession(async_engine) as session:
         async with session.begin():
             error_log = ErrorLog(

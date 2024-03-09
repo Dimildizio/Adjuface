@@ -85,6 +85,11 @@ async def handle_location(message: Message) -> None:
 
 
 async def handle_hello(message: Message) -> None:
+    """
+    Sends currency rates and weather
+    :param message: aiogram types.Message class
+    :return: 
+    """
     if not await is_premium(message):
         return await handle_unsupported_content(message)
     result = LOCALIZATION['morning']
