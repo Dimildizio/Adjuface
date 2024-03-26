@@ -1,0 +1,38 @@
+{
+  "categories": {
+    "art": [
+      {
+        "mode": "1",
+        "name": "Peter the Great",
+        "filepath": ""
+      },
+      {
+        "mode": "5",
+        "name": "Julius Caesar",
+        "filepath": ""
+      },
+      {
+        "mode": "6",
+        "name": "Nefertiti",
+        "filepath": ""
+      }
+    ],
+    "movies": [
+      {
+        "mode": "41",
+        "name": "Ken",
+        "filepath": ""
+      },
+      {
+        "mode": "42",
+        "name": "Barbie",
+        "filepath": ""
+      }
+    ]
+  },
+  "collages": {
+    "art": "",
+    "movies": "",
+    "instruction": ""
+  }
+}
