@@ -38,8 +38,8 @@ def get_token() -> str:
 async def remove_files_log(td: int = 24) -> None:
     """
     Removes old files from temp folders
-    :param td: the period to remove from now
-    :return:
+    :param td: the period to remove from now    
+    :return None:
     """
     await remove_old_files()
     await log_scheduler_run("remove_old_file", "success", "Completed removing old images", td)

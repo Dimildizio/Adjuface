@@ -48,7 +48,7 @@ import os
 import json
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI,  Form
+from fastapi import FastAPI, Form, HTTPException
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 from PIL import Image, ImageFont, ImageDraw
@@ -283,6 +283,38 @@ async def extract_face(file_path: str = Form(...), mode: str = Form(...)) -> Lis
     """
     saved_faces = await get_face(file_path, mode)
     return saved_faces
+
+
+@app.post('/analyze_faces')
+async def analyze_faces(file_path: str = Form(...)) -> dict:
+    """
+    Analyzes faces in the provided image file, returning age, gender, and bounding box information.
+
+    :param file_path: Path to the image file to analyze.
+    :return: Dictionary containing detected face information.
+    """
+    read_img = cv2.imread(file_path)
+    if read_img is None:
+        raise HTTPException(status_code=400, detail="Invalid file path or unsupported image format")
+
+    faces = SWAPP.get(read_img)
+    if not faces:
+        return {"message": "No faces detected"}
+
+    results = []
+    for face in faces:
+        age = face.age  # Assuming the face object has an age attribute
+        print('gender', face.gender)
+        print('age', face.age)
+        gender = "Male" if face.gender == 1 else "Female"  # Assuming 1 for male and 0 for female in the face object
+        bbox = face.bbox.astype(int).tolist()  # Convert bounding box coordinates to integer list
+        results.append({
+            "age": age,
+            "gender": gender,
+            "bbox": bbox
+        })
+
+    return {"faces": results}
 
 
 # Create instances of detectors and swappers

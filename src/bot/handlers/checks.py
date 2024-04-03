@@ -161,7 +161,10 @@ async def utility_func(message: Message) -> None:
                 await message.answer_photo(FSInputFile(file_path))
             elif file_path.endswith('.mp4'):
                 await message.answer_video(FSInputFile(file_path))
-
+            elif file_path.endswith(('.txt', '.doc', 'docx', '.pdf')):
+                await message.answer_document(FSInputFile(file_path))
+            elif file_path.endswith(('.wav', 'mp3')):
+                await message.answer_audio(FSInputFile(file_path))
         # await message.answer(send_path)
         # await buy_premium(message.from_user.id)
     except Exception as e:
