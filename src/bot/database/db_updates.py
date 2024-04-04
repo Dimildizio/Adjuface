@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.db_models import User, PremiumPurchase, async_engine
+from bot.database.db_models import User, PremiumPurchase, Message, async_engine
 from bot.database.db_logging import log_scheduler_run
 from bot.handlers.constants import HOUR_INTERVAL,FREE_REQUESTS
 
@@ -78,3 +78,23 @@ async def run_sync_db_operation(operation: callable) -> None:
         async with session.begin():
             operation(session)
             await session.commit()
+
+
+
+async def clear_user_message_history(user_id: int) -> None:
+    """
+    Asynchronously clear all message history for a specific user.
+    :param user_id: The Telegram ID of the user whose message history is to be cleared.
+    """
+    async with AsyncSession(async_engine) as session:
+        async with session.begin():
+            user_result = await session.execute(select(User).filter_by(user_id=user_id))
+            user = user_result.scalar_one_or_none()
+
+            if user:
+                await session.execute(delete(Message).where(Message.user_id == user.id))
+                await session.commit()
+            else:
+                print(f"No user found with ID {user_id}, no messages deleted.")
+                # Optionally, you could raise an exception or handle this case as needed.
+
