@@ -58,4 +58,8 @@ YOUTOK = CONFIG['you_token']
 YOUNUM = CONFIG['you_num']
 PRICE = CONFIG['price']
 
+SD_API = CONFIG['sd_api']
+SD_URL = CONFIG['sd_url']
+SD_FOLDERNAME = CONFIG['sd_foldername']
+
 UTIL_FOLDER = CONFIG['util_folder']

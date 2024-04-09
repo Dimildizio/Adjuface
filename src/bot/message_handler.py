@@ -40,7 +40,7 @@ from bot.handlers.voices import handle_voice
 from bot.handlers.commands import handle_start, handle_help, handle_contacts, handle_support, handle_image, \
                                   output_all_users_to_console, set_receive_flag, check_status, handle_text, \
                                   reset_images_left, donate_link, handle_category_command, button_callback_handler, \
-                                  handle_unsupported_content, handle_hello, handle_location
+                                  handle_unsupported_content, handle_hello, handle_location, handle_draw
 from bot.handlers.constants import LOCALIZATION
 
 
@@ -52,20 +52,21 @@ def setup_handlers(dp: Any, bot_token: str) -> None:
     :param bot_token: The Telegram bot token.
     :return: None
     """
-
     dp.message(Command('start'))(handle_start)
     dp.message(Command('help'))(handle_help)
     dp.message(Command('contacts'))(handle_contacts)
     dp.message(Command('support'))(handle_support)
     dp.message(Command('hello'))(handle_hello)
     dp.message(Command('show_users'))(output_all_users_to_console)
-    dp.message(Command('util'))(utility_func)
+    dp.message(Command('u'))(utility_func)
     dp.message(Command('target'))(set_receive_flag)
     dp.message(Command('buy_premium'))(premium_confirm)
     dp.message(Command('reset_user'))(reset_images_left)
     dp.message(Command('status'))(check_status)
     dp.message(Command('donate'))(donate_link)
     dp.message(Command('menu'))(handle_category_command)
+    dp.message(Command('draw'))(handle_draw)
+
     dp.callback_query()(button_callback_handler)
 
     async def generic_handler(func, message: Message) -> None:

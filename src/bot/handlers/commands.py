@@ -47,7 +47,8 @@ from bot.handlers.checks import image_handler_checks, is_premium
 from bot.handlers.voices import synthesize_speech
 from bot.handlers.constants import CONTACTS, LOCALIZATION, PRELOADED_COLLAGES, LANGUAGE, PRICE, DELAY_BETWEEN_IMAGES, \
                                    CURRENCY_URL, CURRENCY_API, WEATHER_URL, WEATHER_API, YOUTOK, YOUNUM, FREE_REQUESTS
-from bot.handlers.image_utils import handle_image_constants, image_handler_logic
+from bot.handlers.image_utils import handle_image_constants, image_handler_logic, send_image
+from bot.handlers.drawer import request_sd
 from utils import get_exchange_rate, get_weather
 
 
@@ -283,6 +284,20 @@ async def handle_image(message: Message, token: str) -> None:
         await log_error(user.user_id, error_message=str(e), details=input_path)
         await message.answer(LOCALIZATION['failed'])
 
+
+async def handle_draw(message: Message):
+    """
+    Handles the draw command by parsing the input text and triggering the drawing logic.
+    """
+    command, *args = message.text.split(maxsplit=1)
+    text_to_draw = args[0] if args else None
+    if text_to_draw is None:
+        return await message.answer("No text provided")
+    await message.answer(f"Prompt: {text_to_draw}")
+    filename = await request_sd(text_to_draw)
+    if filename:
+        await send_image(message, filename)
+    return await message.answer("Error ha occurred while drawing")
 
 async def set_user_to_premium(query: CallbackQuery) -> None:
     """

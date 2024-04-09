@@ -191,3 +191,8 @@ async def image_handler_logic(message, user, file_url, input_path):
                 await image_handler_download_failed(message, response)
                 return
         await image_handler_swapper(message, user, session, input_path)
+
+
+async def send_image(message, file_path):
+    result = FSInputFile(file_path)
+    await message.answer_photo(photo=result)
