@@ -5,9 +5,17 @@ from io import BytesIO
 import base64
 from utils import generate_filename
 from bot.handlers.constants import SD_API, SD_URL, SD_FOLDERNAME
+from googletrans import Translator
+
+
+async def translate_prompt(prompt):
+    g = Translator()
+    text = g.translate(prompt, dest='en').text
+    return text
 
 
 async def request_sd(prompt):
+    prompt = await translate_prompt(prompt)
     payload = json.dumps({"prompt": "draw a detailed and realistic image." + prompt, "steps": 100})
     headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SD_API}
     response = requests.request("POST", SD_URL, headers=headers, data=payload)

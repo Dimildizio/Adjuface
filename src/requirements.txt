@@ -13,3 +13,4 @@ opencv-python
 insightface==0.7.3
 yoomoney==0.1.0
 sqlalchemy
+googletrans==4.0.0-rc1
