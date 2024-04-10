@@ -296,8 +296,8 @@ async def handle_draw(message: Message):
     await message.answer(f"Prompt: {text_to_draw}")
     filename = await request_sd(text_to_draw)
     if filename:
-        await send_image(message, filename)
-    return await message.answer("Error ha occurred while drawing")
+        return await send_image(message, filename)
+    return await message.answer("Error has occurred while drawing")
 
 async def set_user_to_premium(query: CallbackQuery) -> None:
     """

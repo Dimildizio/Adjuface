@@ -1,10 +1,11 @@
+import asyncio
 import requests
 import json
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import base64
 from utils import generate_filename
-from bot.handlers.constants import SD_API, SD_URL, SD_FOLDERNAME
+from bot.handlers.constants import SD_API, SD_URL, SD_FOLDERNAME, SD_SLEEP, SD_TRIES
 from googletrans import Translator
 
 
@@ -14,20 +15,37 @@ async def translate_prompt(prompt):
     return text
 
 
-async def request_sd(prompt):
-    prompt = await translate_prompt(prompt)
-    payload = json.dumps({"prompt": "draw a detailed and realistic image." + prompt, "steps": 100})
-    headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SD_API}
+async def get_sd_response(headers, payload):
     response = requests.request("POST", SD_URL, headers=headers, data=payload)
     if response.status_code == 200:
         return await save_sd(response)
+
+
+async def request_sd(prompt):
+    times = 0
+    prompt = await translate_prompt(prompt)
+    payload = json.dumps({"prompt": "draw a detailed and realistic image." + prompt, "steps": 100})
+    headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SD_API}
+    result = await get_sd_response(headers, payload)
+    print('SD result: ', result)
+    while times < SD_TRIES and not result:
+        print(f'{times}: {result}')
+        times += 1
+        await asyncio.sleep(SD_SLEEP)
+        result = await get_sd_response(headers, payload)
+    return result
 
 
 async def save_sd(response):
     base64_string = response.json()['images'][0]
     image_data = base64.b64decode(base64_string)
     image_bytes = BytesIO(image_data)
-    image = Image.open(image_bytes)
-    name = await generate_filename(folder=SD_FOLDERNAME)
-    image.save(name)
-    return name
+    try:
+        image = Image.open(image_bytes)
+        name = await generate_filename(folder=SD_FOLDERNAME)
+        image.save(name)
+        print('SD all ok')
+        return name
+    except UnidentifiedImageError:
+        print(f'SD is sleeping. Response len: {len(base64_string)}\n')
+        return False

@@ -61,5 +61,7 @@ PRICE = CONFIG['price']
 SD_API = CONFIG['sd_api']
 SD_URL = CONFIG['sd_url']
 SD_FOLDERNAME = CONFIG['sd_foldername']
+SD_SLEEP = CONFIG['sd_sleep']
+SD_TRIES = CONFIG['sd_tries']
 
 UTIL_FOLDER = CONFIG['util_folder']
