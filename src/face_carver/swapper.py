@@ -296,23 +296,14 @@ async def analyze_faces(file_path: str = Form(...)) -> dict:
     read_img = cv2.imread(file_path)
     if read_img is None:
         raise HTTPException(status_code=400, detail="Invalid file path or unsupported image format")
-
     faces = SWAPP.get(read_img)
     if not faces:
         return {"message": "No faces detected"}
-
     results = []
     for face in faces:
-        age = face.age  # Assuming the face object has an age attribute
-        print('gender', face.gender)
-        print('age', face.age)
-        gender = "Male" if face.gender == 1 else "Female"  # Assuming 1 for male and 0 for female in the face object
-        bbox = face.bbox.astype(int).tolist()  # Convert bounding box coordinates to integer list
-        results.append({
-            "age": age,
-            "gender": gender,
-            "bbox": bbox
-        })
+        gender = int(face.gender > 0)
+        bbox = face.bbox.astype(int).tolist()
+        results.append({"age": face.age, "gender": gender, "bbox": bbox})
 
     return {"faces": results}
 

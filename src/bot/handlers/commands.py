@@ -299,6 +299,7 @@ async def handle_draw(message: Message):
         return await send_image(message, filename)
     return await message.answer("Error has occurred while drawing")
 
+
 async def set_user_to_premium(query: CallbackQuery) -> None:
     """
     Sets a user to premium status and provides a response.

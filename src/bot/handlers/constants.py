@@ -63,5 +63,6 @@ SD_URL = CONFIG['sd_url']
 SD_FOLDERNAME = CONFIG['sd_foldername']
 SD_SLEEP = CONFIG['sd_sleep']
 SD_TRIES = CONFIG['sd_tries']
+PREPROMPT = "Generate a clear and coherent depiction with attention to detail of "
 
 UTIL_FOLDER = CONFIG['util_folder']

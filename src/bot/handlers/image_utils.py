@@ -69,9 +69,7 @@ async def handler_image_send(message: Message, output_paths: List) -> bool:
         user = await fetch_user_data(message.from_user.id)
         if not (await check_limit(user, message)):
             return False
-        inp_file = FSInputFile(output_path)
-        await message.answer_photo(photo=inp_file,
-                                   caption=LOCALIZATION['captions'].format(bot_name=CONTACTS['bot_name']))
+        await send_image(message, output_path)
         print('Image sent')
     return True
 
@@ -194,5 +192,6 @@ async def image_handler_logic(message, user, file_url, input_path):
 
 
 async def send_image(message, file_path):
-    result = FSInputFile(file_path)
-    await message.answer_photo(photo=result)
+    inp_file = FSInputFile(file_path)
+    await message.answer_photo(photo=inp_file,
+                               caption=LOCALIZATION['captions'].format(bot_name=CONTACTS['bot_name']))

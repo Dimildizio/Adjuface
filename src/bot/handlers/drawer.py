@@ -5,7 +5,7 @@ from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 import base64
 from utils import generate_filename
-from bot.handlers.constants import SD_API, SD_URL, SD_FOLDERNAME, SD_SLEEP, SD_TRIES
+from bot.handlers.constants import SD_API, SD_URL, SD_FOLDERNAME, SD_SLEEP, SD_TRIES, PREPROMPT
 from googletrans import Translator
 
 
@@ -22,15 +22,16 @@ async def get_sd_response(headers, payload):
 
 
 async def request_sd(prompt):
-    times = 0
+
     prompt = await translate_prompt(prompt)
-    payload = json.dumps({"prompt": "draw a detailed and realistic image." + prompt, "steps": 100})
+    payload = json.dumps({"prompt": PREPROMPT + prompt, "steps": 100})
     headers = {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SD_API}
     result = await get_sd_response(headers, payload)
     print('SD result: ', result)
-    while times < SD_TRIES and not result:
+
+    times = 0
+    while (times := times + 1) < SD_TRIES and not result:
         print(f'{times}: {result}')
-        times += 1
         await asyncio.sleep(SD_SLEEP)
         result = await get_sd_response(headers, payload)
     return result
