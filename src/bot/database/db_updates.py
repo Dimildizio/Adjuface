@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.db_models import User, PremiumPurchase, Message, async_engine
 from bot.database.db_logging import log_scheduler_run
-from bot.handlers.constants import HOUR_INTERVAL,FREE_REQUESTS
+from bot.handlers.constants import HOUR_INTERVAL,FREE_REQUESTS, DEFAULT_MODE
 
 
 async def update_photo_timestamp(user_id: int, timestamp: datetime) -> None:
@@ -40,6 +40,7 @@ async def update_user_quotas(free_requests: int = FREE_REQUESTS, td: int = HOUR_
             users = users.scalars().all()
 
             for user in users:
+                user.mode = DEFAULT_MODE
                 await session.execute(delete(PremiumPurchase).where(
                         (PremiumPurchase.user_id == user.user_id) &
                         (PremiumPurchase.expiration_date < datetime.now().date())))
@@ -63,6 +64,8 @@ async def update_user_quotas(free_requests: int = FREE_REQUESTS, td: int = HOUR_
                     user.status = 'free'
                     user.requests_left = free_requests
                     user.premium_expiration = None  # Clear the premium expiration date
+                    user.targets_left = 0
+                    user.mode = DEFAULT_MODE
             await session.commit()
     await log_scheduler_run("update_user_quotas", "success", "Completed updating user quotas", td)
 

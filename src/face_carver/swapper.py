@@ -196,6 +196,7 @@ async def swap_all_target(source_faces: List, result_img: Any, target_faces: Lis
         new_result_img = result_img.copy()
         for t_face in target_faces:
             new_result_img = SWAPPER.get(new_result_img, t_face, face, paste_back=True)
+            break
         await add_watermark_cv(new_result_img)
         result_faces.append(Image.fromarray(cv2.cvtColor(new_result_img, cv2.COLOR_BGR2RGB)))
         #  if len(result_faces) > n:
@@ -303,7 +304,7 @@ async def analyze_faces(file_path: str = Form(...)) -> dict:
     for face in faces:
         gender = int(face.gender > 0)
         bbox = face.bbox.astype(int).tolist()
-        results.append({"age": face.age, "gender": gender, "bbox": bbox})
+        results.append({"age": max(1, face.age-6), "gender": gender, "bbox": bbox})
 
     return {"faces": results}
 

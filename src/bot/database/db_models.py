@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, TIMESTAMP, Date, ForeignKey, fun
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from bot.handlers.constants import ASYNC_DB_URL, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS
+from bot.handlers.constants import ASYNC_DB_URL, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS, DEFAULT_MODE
 
 
 Base = declarative_base()
@@ -30,7 +30,7 @@ class User(Base):
     username = Column(String)
     first_name = Column(String)
     last_name = Column(String)
-    mode = Column(Integer, default=1)
+    mode = Column(Integer, default=DEFAULT_MODE)
     receive_target_flag = Column(Integer, default=0)
     status = Column(String, default='free')
     requests_left = Column(Integer, default=FREE_REQUESTS)

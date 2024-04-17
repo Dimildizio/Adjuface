@@ -336,12 +336,12 @@ async def check_premium_payment(query):
 
 
 async def generate_payment(query):
-    """later add unique payment id to write in db to enable / disable it and prevent adding premium each click
-        after 1 purchase, add quick pay unique id to db as well as operation_id """
-    # generate db_pay_id here
+    """
+    Generate db_pay_id here
+    """
 
     paylink = Quickpay(receiver=YOUNUM, quickpay_form="button", targets="Startup", paymentType="SB", sum=PRICE,
-                       label=query.from_user.id)  # add db_pay_id with a split symbol here
+                       label=query.from_user.id)
     markup = await confirm_pay()
     await query.message.answer(LOCALIZATION['ask_confirm_pay'])
     await query.message.answer(paylink.redirected_url, reply_markup=markup)

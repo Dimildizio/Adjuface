@@ -11,6 +11,7 @@ premium_days: 30
 free_requests: 2
 premium_requests: 30
 premium_targets: 10
+default_mode: 4
 
 db_name:
 db_type:

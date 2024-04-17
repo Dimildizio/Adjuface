@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
 from bot.database.db_models import User, PremiumPurchase, Message, Payment, async_engine
-from bot.handlers.constants import PREMIUM_DAYS, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS
+from bot.handlers.constants import PREMIUM_DAYS, FREE_REQUESTS, PREMIUM_REQUESTS, PREMIUM_TARGETS, DEFAULT_MODE
 
 
-async def insert_user(user_id: int, username: str, first_name: str, last_name: str, mode: int = 1):
+async def insert_user(user_id: int, username: str, first_name: str, last_name: str, mode: int = DEFAULT_MODE):
     """
     Inserts a new user or updates an existing user's information.
 
