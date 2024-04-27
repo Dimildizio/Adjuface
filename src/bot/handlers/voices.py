@@ -68,6 +68,16 @@ async def handle_voice(message: Message, token: str):
         await respond_with_recognized_text(message, recognized_data)
 
 
+async def get_voice_tone(recognized_data, perform=False):
+    emotion = []
+    if perform:
+        emotions = recognized_data.get("emotions", ["----Could not recognize emotions----"])
+        emotion = [',\n'.join([f"{key}: {round(value, 3)}"
+                                      for key, value in emotions[0].items()])]
+    return emotion
+
+
+
 async def split_and_recognize(input_path: str) -> List:
     """
     Splits the input audio file into chunks, recognizes speech in each chunk,
@@ -82,11 +92,10 @@ async def split_and_recognize(input_path: str) -> List:
         recognized_data = await recognize_speech(chunk_path)
         if recognized_data:
             recognized_text = recognized_data.get("result", ["----Could not recognize text----"])
-            recognized_emotion = recognized_data.get("emotions", ["----Could not recognize emotions----"])
-            recognized_emotion = [',\n'.join([f"{key}: {round(value, 3)}"
-                                              for key, value in recognized_emotion[0].items()])]
+
             recognized_texts.extend(recognized_text)
-            recognized_texts.extend(recognized_emotion)
+            emotions =  await get_voice_tone(recognized_data, perform=False)
+            recognized_texts.extend(emotions)
             os.remove(chunk_path)
             print(f'{chunk_path} recognized')
         else:
