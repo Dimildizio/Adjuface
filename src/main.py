@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import yaml
 from aiogram import Bot, Dispatcher
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -83,4 +84,8 @@ async def run_bot_and_scheduler() -> None:
 
 if __name__ == '__main__':
     list_all_loggers()
-    asyncio.run(run_bot_and_scheduler())
+    try:
+        asyncio.run(run_bot_and_scheduler())
+    except KeyboardInterrupt:
+        print("Shut down")
+        sys.exit(0)
