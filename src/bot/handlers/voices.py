@@ -160,12 +160,15 @@ async def respond_with_recognized_text(message: Message, recognized_texts: List[
     :param recognized_texts: A list of recognized text strings.
     :return: None
     """
+
     if recognized_texts:
-        #  Since recognized_texts is already a list of strings, we can directly join them.
-        result_text = recognized_texts  # '\n\n'.join(recognized_texts)
-        result = await sign_text(result_text)
-        print(f"Recognized text: {result}")
-        await message.answer(result)
+        text = ''.join(recognized_texts)
+        chunk_size = 4000  # Adjust the chunk size as needed
+        chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+        for chunk in chunks:
+            #result = await sign_text(chunk)
+            print(f"Recognized text: {chunk}")
+            await message.answer(chunk)
     else:
         print("Failed to recognize speech.")
         await message.answer("Failed to recognize speech.")

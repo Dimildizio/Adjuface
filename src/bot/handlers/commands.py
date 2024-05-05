@@ -85,6 +85,10 @@ async def handle_location(message: Message) -> None:
     await message.answer(weather)
 
 
+async def handle_service(message: Message) -> None:
+    await buy_premium(message.from_user.id)
+
+
 async def handle_hello(message: Message) -> None:
     """
     Sends currency rates and weather
